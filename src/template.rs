@@ -491,13 +491,23 @@ fn build_text_block(config: &CardConfig, w: u32, h: u32, qr_x: u32, qr_y: u32, q
 
 // ─── SVG → RGBA via resvg (for egui preview texture) ─────────────────────────
 
+/// System font database loaded once for the process lifetime.
+fn system_font_db() -> resvg::usvg::fontdb::Database {
+    use std::sync::OnceLock;
+    static DB: OnceLock<resvg::usvg::fontdb::Database> = OnceLock::new();
+    DB.get_or_init(|| {
+        let mut db = resvg::usvg::fontdb::Database::new();
+        db.load_system_fonts();
+        db
+    }).clone()
+}
+
 /// Rasterize an SVG string to straight-alpha RGBA bytes, scaled to fit within
 /// `max_w × max_h`. Returns `(rgba, width, height)` or `None` on error.
 pub fn svg_to_rgba(svg_str: &str, max_w: u32, max_h: u32) -> Option<(Vec<u8>, u32, u32)> {
     use resvg::usvg;
     let mut opts = usvg::Options::default();
-    // Load system fonts so <text> elements render correctly
-    opts.fontdb_mut().load_system_fonts();
+    *opts.fontdb_mut() = system_font_db();
 
     let tree = usvg::Tree::from_str(svg_str, &opts).ok()?;
     let sz   = tree.size();
@@ -522,7 +532,8 @@ pub fn svg_to_rgba(svg_str: &str, max_w: u32, max_h: u32) -> Option<(Vec<u8>, u3
 /// Rasterize SVG at an explicit pixel-per-SVG-unit scale factor (e.g. 300/96 for PDF at 300 DPI).
 pub fn svg_to_rgba_scaled(svg_str: &str, scale: f32) -> Option<(Vec<u8>, u32, u32)> {
     use resvg::usvg;
-    let opts = usvg::Options::default();
+    let mut opts = usvg::Options::default();
+    *opts.fontdb_mut() = system_font_db();
     let tree = usvg::Tree::from_str(svg_str, &opts).ok()?;
     let sz   = tree.size();
     let sw   = sz.width();

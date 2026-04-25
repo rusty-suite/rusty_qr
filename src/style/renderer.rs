@@ -77,18 +77,17 @@ fn overlay_logo(img: &mut RgbaImage, profile: &StyleProfile, logo_cap: f32) {
     let lx = (profile.logo_pos_x.clamp(0.0, 1.0) * max_x as f32) as u32;
     let ly = (profile.logo_pos_y.clamp(0.0, 1.0) * max_y as f32) as u32;
 
-    // Fond blanc autour du logo
+    // Fond blanc autour du logo — seulement si logo_padding > 0.
+    // pad est exprimé en pixels de l'image QR rasterisée et scale avec module_px.
     let pad = profile.logo_padding;
-    let px0 = lx.saturating_sub(pad);
-    let py0 = ly.saturating_sub(pad);
-    let pw  = logo.width()  + pad * 2;
-    let ph  = logo.height() + pad * 2;
-    for dy in 0..ph {
-        for dx in 0..pw {
-            let cx = px0 + dx;
-            let cy = py0 + dy;
-            if cx < img.width() && cy < img.height() {
-                img.put_pixel(cx, cy, Rgba([255, 255, 255, 255]));
+    if pad > 0 {
+        let px0 = lx.saturating_sub(pad);
+        let py0 = ly.saturating_sub(pad);
+        let pw  = (logo.width()  + pad * 2).min(img.width()  - px0);
+        let ph  = (logo.height() + pad * 2).min(img.height() - py0);
+        for dy in 0..ph {
+            for dx in 0..pw {
+                img.put_pixel(px0 + dx, py0 + dy, Rgba([255, 255, 255, 255]));
             }
         }
     }

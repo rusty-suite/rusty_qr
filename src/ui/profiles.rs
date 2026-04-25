@@ -106,7 +106,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
         if let Some(profile) = app.profiles.get_mut(app.selected_profile) {
             profile_editor(
                 ui, profile, ec,
-                &mut app.preview_dirty, &mut app.profiles_dirty,
+                &mut app.profiles_dirty,
                 &mut app.logo_dl_rx, &mut app.logo_dl_status,
             );
         }
@@ -116,6 +116,9 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
         app.save_profiles();
         app.profiles_dirty = false;
         app.preview_dirty = true;
+        if app.selected_template_idx > 0 {
+            app.template_preview_dirty = true;
+        }
     }
 }
 
@@ -123,7 +126,6 @@ fn profile_editor(
     ui: &mut Ui,
     profile: &mut StyleProfile,
     ec: EcLevel,
-    preview_dirty: &mut bool,
     save_dirty: &mut bool,
     logo_dl_rx: &mut Option<std::sync::mpsc::Receiver<Result<std::path::PathBuf, String>>>,
     logo_dl_status: &mut Option<(bool, String)>,
@@ -280,11 +282,28 @@ fn profile_editor(
                 });
                 ui.end_row();
 
-                ui.label("Marge blanche (px) :");
-                let mut pad = profile.logo_padding as i32;
-                if ui.add(egui::Slider::new(&mut pad, 0..=20)).changed() {
-                    profile.logo_padding = pad as u32; *save_dirty = true;
-                }
+                ui.label("Marge fond blanc :");
+                ui.vertical(|ui| {
+                    let mut pad = profile.logo_padding as i32;
+                    if ui.add(
+                        egui::Slider::new(&mut pad, 0..=20)
+                            .suffix(" px")
+                            .custom_formatter(|v, _| {
+                                if v == 0.0 { "0 — aucun fond".into() }
+                                else { format!("{v:.0} px") }
+                            })
+                    ).changed() {
+                        profile.logo_padding = pad as u32;
+                        *save_dirty = true;
+                    }
+                    if profile.logo_padding == 0 {
+                        ui.label(
+                            egui::RichText::new("Logo superpos\u{E9} directement (transparent)")
+                                .small()
+                                .color(egui::Color32::from_rgb(140, 180, 220)),
+                        );
+                    }
+                });
                 ui.end_row();
             });
 
@@ -365,7 +384,6 @@ fn profile_editor(
             );
         }
 
-        *preview_dirty = true;
     });
 }
 
