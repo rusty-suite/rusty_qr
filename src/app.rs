@@ -54,6 +54,10 @@ pub struct RustyQrApp {
 
     // ── Thème SVG (concepteur de cartes) ─────────────────────────────────────
     /// 0 = aucun, 1..=BUILTIN.len() = intégré, BUILTIN.len()+1 = personnalisé, au-delà = distant
+    // ── Logo URL download ─────────────────────────────────────────────────────
+    pub logo_dl_rx: Option<std::sync::mpsc::Receiver<Result<std::path::PathBuf, String>>>,
+    pub logo_dl_status: Option<(bool, String)>,
+
     pub selected_template_idx: usize,
     pub custom_template_svg: Option<String>,
     pub template_field_data: Vec<TemplateField>,
@@ -90,6 +94,8 @@ impl RustyQrApp {
             export_status: None,
             show_about: false,
             logo_texture: None,
+            logo_dl_rx: None,
+            logo_dl_status: None,
             selected_template_idx: 0,
             custom_template_svg: None,
             template_field_data: Vec::new(),
@@ -126,6 +132,27 @@ impl RustyQrApp {
 impl eframe::App for RustyQrApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         ctx.set_visuals(egui::Visuals::dark());
+
+        // ── Poll logo URL download ────────────────────────────────────────────
+        if let Some(rx) = &self.logo_dl_rx {
+            if let Ok(result) = rx.try_recv() {
+                self.logo_dl_rx = None;
+                match result {
+                    Ok(path) => {
+                        let p = path.to_string_lossy().into_owned();
+                        if let Some(profile) = self.profiles.get_mut(self.selected_profile) {
+                            profile.logo_path = p.clone();
+                        }
+                        self.logo_dl_status = Some((true, format!("\u{2713} Image charg\u{E9}e : {p}")));
+                        self.profiles_dirty = true;
+                        self.preview_dirty  = true;
+                    }
+                    Err(e) => {
+                        self.logo_dl_status = Some((false, format!("\u{2717} {e}")));
+                    }
+                }
+            }
+        }
 
         // ── Poll background template fetches ─────────────────────────────────
         if self.remote_fetch_rx.is_some() {
@@ -269,11 +296,11 @@ impl eframe::App for RustyQrApp {
             ui.separator();
             ui.add_space(4.0);
 
-            nav_btn(ui, &mut self.tab, Tab::Creator,      "📄 Créer QR");
-            nav_btn(ui, &mut self.tab, Tab::Profiles,     "🎨 Profils de style");
-            nav_btn(ui, &mut self.tab, Tab::Library,      "📚 Bibliothèque");
+            nav_btn(ui, &mut self.tab, Tab::Creator,      "\u{1F4C4} Cr\u{E9}er QR");
+            nav_btn(ui, &mut self.tab, Tab::Profiles,     "\u{1F3A8} Profils de style");
+            nav_btn(ui, &mut self.tab, Tab::Library,      "\u{1F4DA} Biblioth\u{E8}que");
             nav_btn(ui, &mut self.tab, Tab::CardDesigner, "\u{1F5FA} Concepteur de cartes");
-            nav_btn(ui, &mut self.tab, Tab::Export,       "💾 Exporter");
+            nav_btn(ui, &mut self.tab, Tab::Export,       "\u{1F4BE} Exporter");
 
             ui.add_space(8.0);
             ui.separator();

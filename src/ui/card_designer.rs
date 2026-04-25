@@ -98,7 +98,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
             for i in 0..field_count {
                 ui.horizontal(|ui| {
                     let vis  = &mut app.template_field_data[i].visible;
-                    let icon = if *vis { "👁" } else { "🙈" };
+                    let icon = if *vis { "\u{1F441}" } else { "\u{1F648}" };
                     if ui.small_button(icon)
                         .on_hover_text(if *vis { "Masquer ce champ" } else { "Afficher ce champ" })
                         .clicked()
@@ -304,7 +304,7 @@ fn show_template_selector(app: &mut RustyQrApp, ui: &mut Ui) -> bool {
     ui.add_space(4.0);
     ui.horizontal(|ui| {
         // Load custom SVG file
-        if ui.button("📁 Fichier SVG").clicked() {
+        if ui.button("\u{1F4C1} Fichier SVG").clicked() {
             if let Some(path) = rfd::FileDialog::new()
                 .add_filter("SVG template", &["svg"])
                 .pick_file()
@@ -324,7 +324,7 @@ fn show_template_selector(app: &mut RustyQrApp, ui: &mut Ui) -> bool {
 
         // Refresh remote template list from GitHub
         let fetching = app.remote_fetch_rx.is_some();
-        let btn_label = if fetching { "⏳" } else { "🔄" };
+        let btn_label = if fetching { "\u{23F3}" } else { "\u{1F504}" };
         let btn = ui.add_enabled(
             !fetching,
             egui::Button::new(btn_label),

@@ -5,8 +5,8 @@ use crate::theme;
 
 pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
     ui.add_space(8.0);
-    theme::title(ui, "🎨 Profils de style");
-    theme::hint(ui, "Chaque profil définit les couleurs, le logo et sa mise en page sur le QR code.");
+    theme::title(ui, "\u{1F3A8} Profils de style");
+    theme::hint(ui, "Chaque profil d\u{E9}finit les couleurs, le logo et sa mise en page sur le QR code.");
     ui.separator();
     ui.add_space(8.0);
 
@@ -37,7 +37,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
                     if count > 1 {
                         if ui.add(
                             egui::Button::new(
-                                egui::RichText::new("🗑").color(egui::Color32::from_rgb(200, 80, 80))
+                                egui::RichText::new("\u{1F5D1}").color(egui::Color32::from_rgb(200, 80, 80))
                             ).frame(false)
                         ).on_hover_text("Supprimer ce profil").clicked() {
                             to_delete = Some(i);
@@ -102,7 +102,11 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
         // ── Colonne droite : éditeur ─────────────────────────────────────────
         let ui = &mut cols[1];
         if let Some(profile) = app.profiles.get_mut(app.selected_profile) {
-            profile_editor(ui, profile, &mut app.preview_dirty, &mut app.profiles_dirty);
+            profile_editor(
+                ui, profile,
+                &mut app.preview_dirty, &mut app.profiles_dirty,
+                &mut app.logo_dl_rx, &mut app.logo_dl_status,
+            );
         }
     });
 
@@ -113,7 +117,14 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
     }
 }
 
-fn profile_editor(ui: &mut Ui, profile: &mut StyleProfile, preview_dirty: &mut bool, save_dirty: &mut bool) {
+fn profile_editor(
+    ui: &mut Ui,
+    profile: &mut StyleProfile,
+    preview_dirty: &mut bool,
+    save_dirty: &mut bool,
+    logo_dl_rx: &mut Option<std::sync::mpsc::Receiver<Result<std::path::PathBuf, String>>>,
+    logo_dl_status: &mut Option<(bool, String)>,
+) {
     ui.label(egui::RichText::new("Éditer le profil").strong());
     ui.add_space(4.0);
 
@@ -154,32 +165,90 @@ fn profile_editor(ui: &mut Ui, profile: &mut StyleProfile, preview_dirty: &mut b
         ui.add_space(6.0);
 
         // ── Logo / image incrustée ────────────────────────────────────────────
-        ui.label(egui::RichText::new("Logo / image incrustée").strong());
+        ui.label(egui::RichText::new("Logo / image incrust\u{E9}e").strong());
         ui.add_space(4.0);
 
         egui::Grid::new("prof_logo")
             .num_columns(2).spacing([8.0, 6.0])
             .show(ui, |ui| {
-                ui.label("Fichier :");
+                // ── Fichier local ─────────────────────────────────────────────
+                ui.label("Fichier local :");
                 ui.horizontal(|ui| {
-                    if ui.text_edit_singleline(&mut profile.logo_path).changed() { *save_dirty = true; }
-                    if ui.button("📁").clicked() {
+                    let path_resp = ui.add(
+                        egui::TextEdit::singleline(&mut profile.logo_path)
+                            .hint_text("chemin / drop ici…")
+                            .desired_width(160.0),
+                    );
+                    if path_resp.changed() { *save_dirty = true; profile.logo_url.clear(); }
+
+                    // Bouton dossier
+                    if ui.button("\u{1F4C1}").on_hover_text("Choisir un fichier image").clicked() {
                         if let Some(p) = rfd::FileDialog::new()
-                            .add_filter("Image", &["png","jpg","jpeg","webp","bmp"])
+                            .add_filter("Image", &["png","jpg","jpeg","webp","bmp","gif"])
                             .pick_file()
                         {
                             profile.logo_path = p.to_string_lossy().into_owned();
+                            profile.logo_url.clear();
                             *save_dirty = true;
                         }
                     }
                     if !profile.logo_path.is_empty() {
-                        if ui.add(egui::Button::new("✕").frame(false)).clicked() {
-                            profile.logo_path.clear(); profile.logo_ratio = 0.0;
+                        if ui.add(egui::Button::new("\u{2715}").frame(false))
+                            .on_hover_text("Supprimer le logo")
+                            .clicked()
+                        {
+                            profile.logo_path.clear();
+                            profile.logo_url.clear();
+                            profile.logo_ratio = 0.0;
+                            *logo_dl_status = None;
                             *save_dirty = true;
                         }
                     }
                 });
                 ui.end_row();
+
+                // ── URL distante ──────────────────────────────────────────────
+                ui.label("URL image :");
+                ui.horizontal(|ui| {
+                    let url_resp = ui.add(
+                        egui::TextEdit::singleline(&mut profile.logo_url)
+                            .hint_text("https://…/logo.png")
+                            .desired_width(160.0),
+                    );
+                    if url_resp.changed() { *save_dirty = true; }
+
+                    let downloading = logo_dl_rx.is_some();
+                    let btn = ui.add_enabled(
+                        !downloading && !profile.logo_url.is_empty(),
+                        egui::Button::new(
+                            if downloading { "\u{23F3}" } else { "\u{1F4E5}" }
+                        ),
+                    ).on_hover_text("T\u{E9}l\u{E9}charger et utiliser comme logo");
+
+                    if btn.clicked() {
+                        let url = profile.logo_url.clone();
+                        let (tx, rx) = std::sync::mpsc::channel();
+                        std::thread::spawn(move || {
+                            let _ = tx.send(
+                                crate::style::profile::StyleProfile::download_logo_to_cache(&url)
+                            );
+                        });
+                        *logo_dl_rx = Some(rx);
+                        *logo_dl_status = Some((true, "T\u{E9}l\u{E9}chargement…".into()));
+                    }
+                });
+                ui.end_row();
+
+                // ── Statut du téléchargement ──────────────────────────────────
+                if let Some((ok, msg)) = logo_dl_status.as_ref() {
+                    ui.label("");
+                    if *ok {
+                        ui.label(egui::RichText::new(msg).small().color(egui::Color32::from_rgb(80,200,80)));
+                    } else {
+                        ui.label(egui::RichText::new(msg).small().color(egui::Color32::from_rgb(220,80,80)));
+                    }
+                    ui.end_row();
+                }
 
                 ui.label("Taille (ratio) :");
                 let mut r = profile.logo_ratio;

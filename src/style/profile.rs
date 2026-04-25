@@ -1,3 +1,4 @@
+use std::io::Read;
 use serde::{Deserialize, Serialize};
 
 fn default_module_px() -> u32 { 10 }
@@ -20,6 +21,9 @@ pub struct StyleProfile {
     // ── Logo / image incrustée ──────────────────────────────────────────────
     #[serde(default)]
     pub logo_path: String,
+    /// URL source du logo (vide si chargé localement)
+    #[serde(default)]
+    pub logo_url: String,
     /// Taille relative (0.0 = aucun, max 0.30 recommandé)
     #[serde(default = "default_logo_ratio")]
     pub logo_ratio: f32,
@@ -43,6 +47,7 @@ impl Default for StyleProfile {
             module_px: 10,
             quiet_zone: 4,
             logo_path: String::new(),
+            logo_url: String::new(),
             logo_ratio: 0.0,
             logo_pos_x: 0.5,
             logo_pos_y: 0.5,
@@ -57,7 +62,40 @@ impl StyleProfile {
     }
     pub fn fg_rgba(&self) -> [u8; 4] { [self.fg[0], self.fg[1], self.fg[2], 255] }
     pub fn bg_rgba(&self) -> [u8; 4] { [self.bg[0], self.bg[1], self.bg[2], 255] }
-    pub fn has_logo(&self) -> bool    { !self.logo_path.is_empty() && self.logo_ratio > 0.001 }
+    pub fn has_logo(&self) -> bool { !self.logo_path.is_empty() && self.logo_ratio > 0.001 }
+
+    /// Télécharge `logo_url` dans le cache et remplit `logo_path`.
+    /// Appelé depuis un thread en arrière-plan.
+    pub fn download_logo_to_cache(url: &str) -> Result<std::path::PathBuf, String> {
+        let resp = ureq::get(url)
+            .timeout(std::time::Duration::from_secs(15))
+            .call()
+            .map_err(|e| e.to_string())?;
+
+        // Déduire l'extension depuis Content-Type ou l'URL
+        let ct = resp.header("content-type").unwrap_or("").to_lowercase();
+        let ext = if ct.contains("png") { "png" }
+            else if ct.contains("jpeg") || ct.contains("jpg") { "jpg" }
+            else if ct.contains("webp") { "webp" }
+            else if ct.contains("bmp")  { "bmp" }
+            else {
+                url.rsplit('.').next().unwrap_or("png")
+            };
+
+        let mut bytes: Vec<u8> = Vec::new();
+        resp.into_reader().read_to_end(&mut bytes).map_err(|e| e.to_string())?;
+
+        // Nom de fichier déterministe basé sur le hash de l'URL
+        let hash = url.bytes().fold(0u64, |h, b| h.wrapping_mul(31).wrapping_add(b as u64));
+        let cache_dir = dirs::cache_dir()
+            .unwrap_or_else(|| std::path::PathBuf::from("."))
+            .join("rusty_qr").join("logo_cache");
+        std::fs::create_dir_all(&cache_dir).map_err(|e| e.to_string())?;
+
+        let path = cache_dir.join(format!("{hash:016X}.{ext}"));
+        std::fs::write(&path, &bytes).map_err(|e| e.to_string())?;
+        Ok(path)
+    }
 }
 
 // ─── Persistence ─────────────────────────────────────────────────────────────

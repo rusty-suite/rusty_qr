@@ -7,7 +7,7 @@ use crate::theme;
 
 pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
     ui.add_space(8.0);
-    theme::title(ui, "📄 Créer un code QR");
+    theme::title(ui, "\u{1F4C4} Cr\u{E9}er un code QR");
     ui.separator();
     ui.add_space(8.0);
 
@@ -79,9 +79,9 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
 
         // Bouton "Enregistrer dans la bibliothèque"
         let save_label = if app.loaded_library_id.is_some() {
-            "💾 Ré-enregistrer"
+            "\u{1F4BE} R\u{E9}-enregistrer"
         } else {
-            "💾 Enregistrer dans la bibliothèque"
+            "\u{1F4BE} Enregistrer dans la biblioth\u{E8}que"
         };
         if ui.button(save_label).clicked() {
             app.show_save_dialog = true;
@@ -95,7 +95,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
 
     // ── Dialogue de sauvegarde ───────────────────────────────────────────────
     if app.show_save_dialog {
-        egui::Window::new("💾 Enregistrer dans la bibliothèque")
+        egui::Window::new("\u{1F4BE} Enregistrer dans la biblioth\u{E8}que")
             .collapsible(false)
             .resizable(false)
             .auto_sized()
