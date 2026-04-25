@@ -42,15 +42,13 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
                         // Left: info
                         ui.vertical(|ui| {
                             ui.label(egui::RichText::new(&entry.name).strong());
-                            ui.label(
-                                egui::RichText::new(format!(
-                                    "{} · {}",
-                                    entry.form.content_type.label(),
-                                    entry.date
-                                ))
-                                .small()
-                                .weak(),
-                            );
+                            let mut meta = format!("{} · {}", entry.form.content_type.label(), entry.date);
+                            if let Some(ref bid) = entry.template.builtin_id {
+                                meta.push_str(&format!("  \u{2022}  \u{1F5FA} {bid}"));
+                            } else if entry.template.custom_svg.is_some() {
+                                meta.push_str("  \u{2022}  \u{1F5FA} personnalis\u{E9}");
+                            }
+                            ui.label(egui::RichText::new(meta).small().weak());
                             // Preview of encoded string
                             let preview = {
                                 let s = entry.form.to_qr_string();
@@ -108,11 +106,63 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
     }
     if let Some(i) = to_load {
         if let Some(entry) = app.library.get(i) {
-            let id = entry.id;
-            app.form = entry.form.clone();
+            let id       = entry.id;
+            let tpl      = entry.template.clone();
+            app.form     = entry.form.clone();
             app.loaded_library_id = Some(id);
-            app.tab = crate::app::Tab::Creator;
             app.regenerate_qr();
+
+            // Restore card config
+            if let Some(card) = tpl.card {
+                app.card = card;
+            }
+
+            // Restore template selection
+            if let Some(ref bid) = tpl.builtin_id {
+                let idx = crate::template::BUILTIN.iter()
+                    .position(|t| t.id == bid.as_str())
+                    .map(|i| i + 1)
+                    .unwrap_or(0);
+                app.selected_template_idx = idx;
+            } else if tpl.custom_svg.is_some() {
+                app.custom_template_svg = tpl.custom_svg.clone();
+                app.selected_template_idx = crate::template::BUILTIN.len() + 1;
+            } else {
+                app.selected_template_idx = 0;
+            }
+
+            // Restore field values
+            if app.selected_template_idx > 0 {
+                let svg_opt: Option<String> = if app.selected_template_idx <= crate::template::BUILTIN.len() {
+                    Some(crate::template::BUILTIN[app.selected_template_idx - 1].svg.to_string())
+                } else {
+                    app.custom_template_svg.clone()
+                };
+                if let Some(svg) = svg_opt {
+                    let labels = app.card.layout.field_labels();
+                    let mut detected = crate::template::detect_fields(&svg, labels);
+                    for df in &mut detected {
+                        if let Some(sf) = tpl.fields.iter().find(|f| f.var == df.var) {
+                            df.value   = sf.value.clone();
+                            df.visible = sf.visible;
+                        }
+                    }
+                    app.template_field_data = detected;
+
+                    let mut det_c = crate::template::detect_colors(&svg);
+                    for dc in &mut det_c {
+                        if let Some(sc) = tpl.colors.iter().find(|c| c.var == dc.var) {
+                            dc.value = sc.value;
+                        }
+                    }
+                    app.template_color_data = det_c;
+                }
+            } else {
+                app.template_field_data.clear();
+                app.template_color_data.clear();
+            }
+            app.template_preview_dirty = true;
+            app.tab = crate::app::Tab::Creator;
         }
     }
 }

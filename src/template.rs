@@ -25,6 +25,7 @@ use image::ImageEncoder;
 
 use crate::card::{CardConfig, CardLayout};
 use crate::qr::encoder::QrMatrix;
+use crate::qr::types::EcLevel;
 use crate::style::{profile::StyleProfile, renderer};
 
 // ─── Built-in templates (compiled-in) ────────────────────────────────────────
@@ -193,10 +194,11 @@ pub fn render(
     profile:  &StyleProfile,
     fields:   &[TemplateField],
     colors:   &[TemplateColor],
+    ec:       EcLevel,
 ) -> String {
     let t1   = preprocess_colors(template, colors);
     let t2   = preprocess_defaults(&t1, fields);
-    let vars = build_vars(config, matrix, profile, fields, false);
+    let vars = build_vars(config, matrix, profile, fields, false, ec);
     substitute(&t2, &vars)
 }
 
@@ -210,11 +212,12 @@ pub fn render_preview(
     colors:   &[TemplateColor],
     matrix:   Option<&QrMatrix>,
     profile:  &StyleProfile,
+    ec:       EcLevel,
 ) -> String {
     let t1      = preprocess_colors(template, colors);
     let t2      = preprocess_defaults(&t1, fields);
     let preview = matrix.is_none(); // use placeholder only when no matrix
-    let vars    = build_vars(config, matrix, profile, fields, preview);
+    let vars    = build_vars(config, matrix, profile, fields, preview, ec);
     substitute(&t2, &vars)
 }
 
@@ -280,6 +283,7 @@ fn build_vars(
     profile: &StyleProfile,
     fields:  &[TemplateField],
     preview: bool,
+    ec:      EcLevel,
 ) -> HashMap<String, String> {
     let (w, h) = config.layout.canvas_px();
     let qr_sz  = calc_qr_sz(config, w, h);
@@ -317,7 +321,7 @@ fn build_vars(
     // Pre-built blocks
     vars.insert("QR_IMAGE".into(),
         if preview { qr_placeholder(qr_x, qr_y, qr_sz) }
-        else       { build_qr_image(matrix, profile, qr_x, qr_y, qr_sz) });
+        else       { build_qr_image(matrix, profile, qr_x, qr_y, qr_sz, ec) });
     vars.insert("ACCENT_BLOCK".into(), build_accent_block(config, w, h, qr_x, qr_y, qr_sz));
     vars.insert("TEXT_BLOCK".into(),   build_text_block(config, w, h, qr_x, qr_y, qr_sz));
     // Field vars for simple {{F0}} (after preprocess_defaults already handled {{F0:default}})
@@ -422,6 +426,7 @@ fn build_qr_image(
     matrix:  Option<&QrMatrix>,
     profile: &StyleProfile,
     qr_x: u32, qr_y: u32, qr_sz: u32,
+    ec: EcLevel,
 ) -> String {
     let Some(matrix) = matrix else {
         return qr_placeholder(qr_x, qr_y, qr_sz);
@@ -429,7 +434,7 @@ fn build_qr_image(
     let mut tmp = profile.clone();
     tmp.module_px  = (qr_sz as usize / (matrix.len() + tmp.quiet_zone as usize * 2 + 1)).max(1) as u32;
     tmp.quiet_zone = 2;
-    let img = renderer::render(matrix, &tmp);
+    let img = renderer::render_ec(matrix, &tmp, ec);
     let mut png: Vec<u8> = Vec::new();
     let enc = image::codecs::png::PngEncoder::new(&mut png);
     let _ = enc.write_image(img.as_raw(), img.width(), img.height(), image::ColorType::Rgba8);
@@ -510,6 +515,28 @@ pub fn svg_to_rgba(svg_str: &str, max_w: u32, max_h: u32) -> Option<(Vec<u8>, u3
         &mut pixmap.as_mut());
 
     // tiny-skia returns premultiplied RGBA; egui expects straight/unmultiplied
+    let straight = unpremultiply(pixmap.data());
+    Some((straight, w, h))
+}
+
+/// Rasterize SVG at an explicit pixel-per-SVG-unit scale factor (e.g. 300/96 for PDF at 300 DPI).
+pub fn svg_to_rgba_scaled(svg_str: &str, scale: f32) -> Option<(Vec<u8>, u32, u32)> {
+    use resvg::usvg;
+    let opts = usvg::Options::default();
+    let tree = usvg::Tree::from_str(svg_str, &opts).ok()?;
+    let sz   = tree.size();
+    let sw   = sz.width();
+    let sh   = sz.height();
+    if sw <= 0.0 || sh <= 0.0 { return None; }
+
+    let w = ((sw * scale).ceil() as u32).max(1);
+    let h = ((sh * scale).ceil() as u32).max(1);
+
+    let mut pixmap = resvg::tiny_skia::Pixmap::new(w, h)?;
+    resvg::render(&tree,
+        resvg::tiny_skia::Transform::from_scale(scale, scale),
+        &mut pixmap.as_mut());
+
     let straight = unpremultiply(pixmap.data());
     Some((straight, w, h))
 }

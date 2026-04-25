@@ -85,10 +85,9 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
         };
         if ui.button(save_label).clicked() {
             app.show_save_dialog = true;
-            // Propose un nom basé sur le type et un extrait
             if app.save_name_input.is_empty() {
-                let snippet = encoded.chars().take(30).collect::<String>();
-                app.save_name_input = format!("{} — {}", app.form.content_type.label(), snippet);
+                // Use display_name_hint which omits password fields
+                app.save_name_input = app.form.display_name_hint();
             }
         }
     });
@@ -122,7 +121,8 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
                     if ui.add_enabled(can_save, egui::Button::new("✓ Enregistrer")).clicked()
                         || (ui.input(|i| i.key_pressed(egui::Key::Enter)) && can_save)
                     {
-                        history::add_entry(&mut app.library, name, app.form.clone());
+                        let tpl_state = build_template_state(app);
+                        history::add_entry(&mut app.library, name, app.form.clone(), tpl_state);
                         app.show_save_dialog = false;
                         app.save_name_input.clear();
                     }
@@ -263,4 +263,38 @@ fn field2(ui: &mut egui::Ui, label: &str, field: &mut String, changed: &mut bool
     egui::Grid::new(label).num_columns(2).spacing([8.0, 4.0]).show(ui, |ui| {
         lf(ui, label, field, changed);
     });
+}
+
+fn build_template_state(app: &crate::app::RustyQrApp) -> crate::history::SavedTemplateState {
+    use crate::history::{SavedColor, SavedField, SavedTemplateState};
+    use crate::template::BUILTIN;
+
+    let builtin_id = if app.selected_template_idx > 0
+        && app.selected_template_idx <= BUILTIN.len()
+    {
+        Some(BUILTIN[app.selected_template_idx - 1].id.to_string())
+    } else {
+        None
+    };
+
+    let custom_svg = if app.selected_template_idx == BUILTIN.len() + 1 {
+        app.custom_template_svg.clone()
+    } else {
+        None
+    };
+
+    let fields = app.template_field_data.iter().map(|f| SavedField {
+        var:     f.var.clone(),
+        value:   f.value.clone(),
+        visible: f.visible,
+    }).collect();
+
+    let colors = app.template_color_data.iter().map(|c| SavedColor {
+        var:   c.var.clone(),
+        value: c.value,
+    }).collect();
+
+    let card = Some(app.card.clone());
+
+    SavedTemplateState { builtin_id, custom_svg, fields, colors, card }
 }

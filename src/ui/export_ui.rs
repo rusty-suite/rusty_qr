@@ -71,7 +71,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
             app.export_status = Some((false, "Choisissez un chemin de fichier.".into()));
         } else if let Some(matrix) = &app.qr_matrix {
             let profile = app.current_profile().clone();
-            let result = export::export(matrix, &profile, app.export_format, &app.export_path);
+            let result = export::export(matrix, &profile, app.form.ec_level, app.export_format, &app.export_path);
             app.export_status = Some(match result {
                 Ok(_) => (true, format!("✓ Exporté : {}", app.export_path)),
                 Err(e) => (false, format!("✗ Erreur : {e}")),

@@ -56,19 +56,21 @@ impl ExportFormat {
 }
 
 use crate::qr::encoder::QrMatrix;
+use crate::qr::types::EcLevel;
 use crate::style::profile::StyleProfile;
 
 pub fn export(
-    matrix: &QrMatrix,
+    matrix:  &QrMatrix,
     profile: &StyleProfile,
-    format: ExportFormat,
-    path: &str,
+    ec:      EcLevel,
+    format:  ExportFormat,
+    path:    &str,
 ) -> Result<(), String> {
     match format {
         ExportFormat::Png  => raster::export_png(matrix, profile, path),
         ExportFormat::Jpg  => raster::export_jpg(matrix, profile, path),
         ExportFormat::Svg  => svg::export(matrix, profile, path),
-        ExportFormat::Pdf  => pdf::export(matrix, profile, path),
+        ExportFormat::Pdf  => pdf::export(matrix, profile, ec, path),
         ExportFormat::Eps  => eps::export(matrix, profile, path),
         ExportFormat::Docx => docx::export(matrix, profile, path),
     }
