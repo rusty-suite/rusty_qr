@@ -1,5 +1,7 @@
 mod app;
+mod card;
 mod export;
+mod history;
 mod logo;
 mod qr;
 mod style;
