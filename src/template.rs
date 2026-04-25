@@ -198,26 +198,28 @@ pub fn render(
 ) -> String {
     let t1   = preprocess_colors(template, colors);
     let t2   = preprocess_defaults(&t1, fields);
-    let vars = build_vars(config, matrix, profile, fields, false, ec);
+    let vars = build_vars(config, matrix, profile, fields, false, ec, None);
     substitute(&t2, &vars)
 }
 
 /// Like `render()` but optimised for live preview.
-/// Passes the real QR matrix when available (so the preview matches the export);
-/// falls back to a gray placeholder rect when no QR has been generated yet.
+/// When `qr_image` is supplied (the already-rendered sidebar QR), it is
+/// embedded directly — no re-render, and the result is pixel-identical to
+/// the right-panel preview. Falls back to matrix re-render, then placeholder.
 pub fn render_preview(
-    template: &str,
-    config:   &CardConfig,
-    fields:   &[TemplateField],
-    colors:   &[TemplateColor],
-    matrix:   Option<&QrMatrix>,
-    profile:  &StyleProfile,
-    ec:       EcLevel,
+    template:  &str,
+    config:    &CardConfig,
+    fields:    &[TemplateField],
+    colors:    &[TemplateColor],
+    matrix:    Option<&QrMatrix>,
+    profile:   &StyleProfile,
+    ec:        EcLevel,
+    qr_image:  Option<&image::RgbaImage>,
 ) -> String {
     let t1      = preprocess_colors(template, colors);
     let t2      = preprocess_defaults(&t1, fields);
-    let preview = matrix.is_none(); // use placeholder only when no matrix
-    let vars    = build_vars(config, matrix, profile, fields, preview, ec);
+    let preview = matrix.is_none() && qr_image.is_none();
+    let vars    = build_vars(config, matrix, profile, fields, preview, ec, qr_image);
     substitute(&t2, &vars)
 }
 
@@ -278,12 +280,13 @@ fn substitute(template: &str, vars: &HashMap<String, String>) -> String {
 // ─── Build variable map ───────────────────────────────────────────────────────
 
 fn build_vars(
-    config:  &CardConfig,
-    matrix:  Option<&QrMatrix>,
-    profile: &StyleProfile,
-    fields:  &[TemplateField],
-    preview: bool,
-    ec:      EcLevel,
+    config:   &CardConfig,
+    matrix:   Option<&QrMatrix>,
+    profile:  &StyleProfile,
+    fields:   &[TemplateField],
+    preview:  bool,
+    ec:       EcLevel,
+    qr_image: Option<&image::RgbaImage>,
 ) -> HashMap<String, String> {
     let (w, h) = config.layout.canvas_px();
     let qr_sz  = calc_qr_sz(config, w, h);
@@ -320,8 +323,13 @@ fn build_vars(
     vars.insert("AH".into(), ah.to_string());
     // Pre-built blocks
     vars.insert("QR_IMAGE".into(),
-        if preview { qr_placeholder(qr_x, qr_y, qr_sz) }
-        else       { build_qr_image(matrix, profile, qr_x, qr_y, qr_sz, ec) });
+        if preview {
+            qr_placeholder(qr_x, qr_y, qr_sz)
+        } else if let Some(img) = qr_image {
+            embed_rgba_image(img, qr_x, qr_y, qr_sz)
+        } else {
+            build_qr_image(matrix, profile, qr_x, qr_y, qr_sz, ec)
+        });
     vars.insert("ACCENT_BLOCK".into(), build_accent_block(config, w, h, qr_x, qr_y, qr_sz));
     vars.insert("TEXT_BLOCK".into(),   build_text_block(config, w, h, qr_x, qr_y, qr_sz));
     // Field vars for simple {{F0}} (after preprocess_defaults already handled {{F0:default}})
@@ -420,6 +428,17 @@ fn qr_placeholder(qr_x: u32, qr_y: u32, qr_sz: u32) -> String {
     format!(
         "  <rect x=\"{qr_x}\" y=\"{qr_y}\" width=\"{qr_sz}\" height=\"{qr_sz}\" fill=\"#D0D0D0\" rx=\"4\"/>\n  <text x=\"{cx}\" y=\"{cy}\" text-anchor=\"middle\" dominant-baseline=\"middle\" fill=\"#888\" font-family=\"Arial,sans-serif\" font-size=\"14\">QR</text>"
     )
+}
+
+/// Encode a pre-rendered RGBA image as a base64 PNG and return an SVG `<image>` element.
+/// Used when `qr_rendered_image` is already available — avoids a redundant re-render.
+fn embed_rgba_image(img: &image::RgbaImage, qr_x: u32, qr_y: u32, qr_sz: u32) -> String {
+    let mut png: Vec<u8> = Vec::new();
+    let enc = image::codecs::png::PngEncoder::new(&mut png);
+    let _ = enc.write_image(img.as_raw(), img.width(), img.height(), image::ColorType::Rgba8);
+    use base64::Engine;
+    let b64 = base64::engine::general_purpose::STANDARD.encode(&png);
+    format!("  <image x=\"{qr_x}\" y=\"{qr_y}\" width=\"{qr_sz}\" height=\"{qr_sz}\" href=\"data:image/png;base64,{b64}\"/>")
 }
 
 fn build_qr_image(

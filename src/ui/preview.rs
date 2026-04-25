@@ -27,8 +27,12 @@ pub fn show_preview(app: &mut RustyQrApp, ui: &mut Ui, ctx: &Context) {
                 color_img,
                 egui::TextureOptions::NEAREST,
             ));
+            // Keep a copy so the card designer can embed the same render
+            // without re-running the (potentially heavy) QR rasterizer.
+            app.qr_rendered_image = Some(img);
         } else {
             app.preview_texture = None;
+            app.qr_rendered_image = None;
         }
         app.preview_dirty = false;
     }
