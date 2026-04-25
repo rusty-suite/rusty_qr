@@ -149,16 +149,16 @@ fn profile_editor(
 
                 ui.label("Taille module (px) :");
                 let mut px = profile.module_px as i32;
-                if ui.add(egui::Slider::new(&mut px, 4..=24)).changed() {
-                    profile.module_px = px as u32; *save_dirty = true;
-                }
+                let r = ui.add(egui::Slider::new(&mut px, 4..=24));
+                if r.changed() { profile.module_px = px as u32; }
+                if r.drag_stopped() || (r.changed() && !r.dragged()) { *save_dirty = true; }
                 ui.end_row();
 
                 ui.label("Zone silencieuse :");
                 let mut qz = profile.quiet_zone as i32;
-                if ui.add(egui::Slider::new(&mut qz, 0..=10)).changed() {
-                    profile.quiet_zone = qz as u32; *save_dirty = true;
-                }
+                let r = ui.add(egui::Slider::new(&mut qz, 0..=10));
+                if r.changed() { profile.quiet_zone = qz as u32; }
+                if r.drag_stopped() || (r.changed() && !r.dragged()) { *save_dirty = true; }
                 ui.end_row();
             });
 
@@ -262,12 +262,12 @@ fn profile_editor(
                         *save_dirty = true;
                     }
                     let mut r = profile.logo_ratio;
-                    if ui.add(
+                    let resp = ui.add(
                         egui::Slider::new(&mut r, 0.0..=max_r)
                             .custom_formatter(|v, _| format!("{:.0}%", v * 100.0))
-                    ).changed() {
-                        profile.logo_ratio = r; *save_dirty = true;
-                    }
+                    );
+                    if resp.changed() { profile.logo_ratio = r; }
+                    if resp.drag_stopped() || (resp.changed() && !resp.dragged()) { *save_dirty = true; }
                     ui.label(
                         egui::RichText::new(format!(
                             "Max EC {} : {:.0}%  \u{2014}  actuel : {:.0}%",
@@ -281,16 +281,15 @@ fn profile_editor(
 
                 ui.label("Marge fond blanc :");
                 let mut pad = profile.logo_padding as i32;
-                if ui.add(
+                let r = ui.add(
                     egui::Slider::new(&mut pad, 0..=20)
                         .custom_formatter(|v, _| {
                             if v == 0.0 { "0 \u{2014} aucun fond".into() }
                             else { format!("{v:.0} px") }
                         })
-                ).changed() {
-                    profile.logo_padding = pad as u32;
-                    *save_dirty = true;
-                }
+                );
+                if r.changed() { profile.logo_padding = pad as u32; }
+                if r.drag_stopped() || (r.changed() && !r.dragged()) { *save_dirty = true; }
                 ui.end_row();
 
                 if profile.logo_padding == 0 {
