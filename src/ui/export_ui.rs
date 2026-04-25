@@ -11,7 +11,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
     ui.add_space(8.0);
 
     if app.qr_matrix.is_none() {
-        theme::status_warn(ui, "⚠ Générez d'abord un code QR dans l'onglet Créer.");
+        theme::status_warn(ui, "\u{26A0} G\u{E9}n\u{E9}rez d'abord un code QR dans l'onglet Cr\u{E9}er.");
         return;
     }
 
@@ -39,7 +39,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
                     for (i, name) in names.iter().enumerate() {
                         if ui.selectable_label(app.selected_profile == i, name).clicked() {
                             app.selected_profile = i;
-                            app.preview_dirty = true;
+                            app.mark_qr_dirty();
                         }
                     }
                 });
@@ -73,8 +73,8 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
             let profile = app.current_profile().clone();
             let result = export::export(matrix, &profile, app.form.ec_level, app.export_format, &app.export_path);
             app.export_status = Some(match result {
-                Ok(_) => (true, format!("✓ Exporté : {}", app.export_path)),
-                Err(e) => (false, format!("✗ Erreur : {e}")),
+                Ok(_) => (true, format!("\u{2713} Export\u{E9} : {}", app.export_path)),
+                Err(e) => (false, format!("\u{2717} Erreur : {e}")),
             });
         }
     }

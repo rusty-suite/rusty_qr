@@ -31,7 +31,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
 
                 if ui.selectable_label(selected, &app.profiles[i].name).clicked() {
                     app.selected_profile = i;
-                    app.preview_dirty = true;
+                    app.mark_qr_dirty();
                 }
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -56,7 +56,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
                     app.selected_profile = app.profiles.len().saturating_sub(1);
                 }
                 app.save_profiles();
-                app.preview_dirty = true;
+                app.mark_qr_dirty();
                 app.confirm_delete_profile = None;
             } else {
                 app.confirm_delete_profile = Some(idx);
@@ -75,16 +75,16 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
                     .show(ui, |ui| {
                         ui.label(egui::RichText::new(format!("Supprimer « {name} » ?")).color(egui::Color32::from_rgb(240, 120, 120)));
                         ui.horizontal(|ui| {
-                            if ui.button("✓ Confirmer").clicked() {
+                            if ui.button("\u{2713} Confirmer").clicked() {
                                 app.profiles.remove(idx);
                                 if app.selected_profile >= app.profiles.len() {
                                     app.selected_profile = app.profiles.len().saturating_sub(1);
                                 }
                                 app.save_profiles();
-                                app.preview_dirty = true;
+                                app.mark_qr_dirty();
                                 app.confirm_delete_profile = None;
                             }
-                            if ui.button("✕ Annuler").clicked() {
+                            if ui.button("\u{2715} Annuler").clicked() {
                                 app.confirm_delete_profile = None;
                             }
                         });
@@ -93,7 +93,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
         }
 
         ui.add_space(8.0);
-        if ui.button("＋ Nouveau profil").clicked() {
+        if ui.button("+ Nouveau profil").clicked() {
             app.profiles.push(StyleProfile::named(&format!("Profil {}", app.profiles.len() + 1)));
             app.selected_profile = app.profiles.len() - 1;
             app.confirm_delete_profile = None;
@@ -115,10 +115,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
     if app.profiles_dirty {
         app.save_profiles();
         app.profiles_dirty = false;
-        app.preview_dirty = true;
-        if app.selected_template_idx > 0 {
-            app.template_preview_dirty = true;
-        }
+        app.mark_qr_dirty();
     }
 }
 
@@ -314,9 +311,9 @@ fn profile_editor(
         ui.add_space(4.0);
 
         let pos_grid = [
-            (0.0f32, 0.0f32, "↖"), (0.5, 0.0, "↑"), (1.0, 0.0, "↗"),
-            (0.0,    0.5,    "←"), (0.5, 0.5, "·"), (1.0, 0.5, "→"),
-            (0.0,    1.0,    "↙"), (0.5, 1.0, "↓"), (1.0, 1.0, "↘"),
+            (0.0f32, 0.0f32, "\u{2196}"), (0.5, 0.0, "\u{2191}"), (1.0, 0.0, "\u{2197}"),
+            (0.0,    0.5,    "\u{2190}"), (0.5, 0.5, "\u{B7}"),   (1.0, 0.5, "\u{2192}"),
+            (0.0,    1.0,    "\u{2199}"), (0.5, 1.0, "\u{2193}"), (1.0, 1.0, "\u{2198}"),
         ];
 
         let cell = 28.0;
@@ -358,7 +355,7 @@ fn profile_editor(
         }
 
         ui.add_space(4.0);
-        theme::hint(ui, "Cliquez sur une cellule pour positionner le logo.\nLe centre est la position recommandée (•).");
+        theme::hint(ui, "Cliquez sur une cellule pour positionner le logo.\nLe centre est la position recommand\u{E9}e (\u{2022}).");
 
         // Safe zone info
         // ── Indicateur lisibilité ─────────────────────────────────────────────

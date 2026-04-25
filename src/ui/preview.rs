@@ -41,7 +41,7 @@ pub fn show_preview(app: &mut RustyQrApp, ui: &mut Ui, ctx: &Context) {
         let size = egui::vec2(display_size, display_size);
         ui.add(egui::Image::new(tex).fit_to_exact_size(size));
     } else if let Some(err) = &app.qr_error.clone() {
-        theme::status_err(ui, &format!("✗ {err}"));
+        theme::status_err(ui, &format!("\u{2717} {err}"));
     } else {
         let rect = ui.allocate_exact_size(
             egui::vec2(display_size, display_size),
@@ -60,7 +60,7 @@ pub fn show_preview(app: &mut RustyQrApp, ui: &mut Ui, ctx: &Context) {
     ui.add_space(8.0);
 
     // Quick generate button
-    if ui.button("⟳ Générer").clicked() {
+    if ui.button("\u{1F504} G\u{E9}n\u{E9}rer").clicked() {
         app.regenerate_qr();
     }
 }

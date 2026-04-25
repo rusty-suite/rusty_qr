@@ -116,17 +116,21 @@ impl RustyQrApp {
             .unwrap_or_else(|| Box::leak(Box::new(StyleProfile::default())))
     }
 
+    /// Marque les deux previews comme obsolètes.
+    /// À appeler dès que le QR ou le profil actif change.
+    pub fn mark_qr_dirty(&mut self) {
+        self.preview_dirty = true;
+        if self.selected_template_idx > 0 {
+            self.template_preview_dirty = true;
+        }
+    }
+
     pub fn regenerate_qr(&mut self) {
         match crate::qr::encoder::encode(&self.form) {
             Ok(m)  => { self.qr_matrix = Some(m); self.qr_error = None; }
             Err(e) => { self.qr_matrix = None; self.qr_error = Some(e.to_string()); }
         }
-        self.preview_dirty = true;
-        // Si un thème SVG est actif, sa prévisualisation doit être mise à jour
-        // pour refléter le nouveau QR code.
-        if self.selected_template_idx > 0 {
-            self.template_preview_dirty = true;
-        }
+        self.mark_qr_dirty();
     }
 
     pub fn save_profiles(&self) {
@@ -150,7 +154,7 @@ impl eframe::App for RustyQrApp {
                         }
                         self.logo_dl_status = Some((true, format!("\u{2713} Image charg\u{E9}e : {p}")));
                         self.profiles_dirty = true;
-                        self.preview_dirty  = true;
+                        self.mark_qr_dirty();
                     }
                     Err(e) => {
                         self.logo_dl_status = Some((false, format!("\u{2717} {e}")));
@@ -168,9 +172,9 @@ impl eframe::App for RustyQrApp {
                     Ok(list) => {
                         let n = list.len();
                         self.remote_templates = list;
-                        (true, format!("✓ {n} thème(s) chargé(s) depuis GitHub"))
+                        (true, format!("\u{2713} {n} th\u{E8}me(s) charg\u{E9}(s) depuis GitHub"))
                     }
-                    Err(e) => (false, format!("✗ {e}")),
+                    Err(e) => (false, format!("\u{2717} {e}")),
                 });
                 self.remote_fetch_rx = None;
             }
@@ -184,9 +188,9 @@ impl eframe::App for RustyQrApp {
                         if let Some(t) = self.remote_templates.get_mut(idx) {
                             t.svg = Some(svg);
                         }
-                        (true, "✓ Thème téléchargé".into())
+                        (true, "T\u{E9}l\u{E9}charg\u{E9} \u{2713}".into())
                     }
-                    Err(e) => (false, format!("✗ {e}")),
+                    Err(e) => (false, format!("\u{2717} {e}")),
                 });
                 self.remote_svg_dl = None;
             }
@@ -242,7 +246,7 @@ impl eframe::App for RustyQrApp {
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     ui.add_space(4.0);
-                    if ui.add(egui::Button::new("⚙").frame(false)).on_hover_text("À propos").clicked() {
+                    if ui.add(egui::Button::new("\u{2699}").frame(false)).on_hover_text("\u{00C0} propos").clicked() {
                         self.show_about = true;
                     }
                 });
@@ -329,7 +333,7 @@ impl eframe::App for RustyQrApp {
             for (i, name) in names.iter().enumerate() {
                 if ui.selectable_label(self.selected_profile == i, name).clicked() {
                     self.selected_profile = i;
-                    self.preview_dirty = true;
+                    self.mark_qr_dirty();
                 }
             }
         });

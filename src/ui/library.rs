@@ -42,7 +42,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
                         // Left: info
                         ui.vertical(|ui| {
                             ui.label(egui::RichText::new(&entry.name).strong());
-                            let mut meta = format!("{} · {}", entry.form.content_type.label(), entry.date);
+                            let mut meta = format!("{} \u{B7} {}", entry.form.content_type.label(), entry.date);
                             if let Some(ref bid) = entry.template.builtin_id {
                                 meta.push_str(&format!("  \u{2022}  \u{1F5FA} {bid}"));
                             } else if entry.template.custom_svg.is_some() {
@@ -77,7 +77,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
                                 to_delete = Some(entry.id);
                             }
                             // Load
-                            let load_label = if is_loaded { "✓ Chargé" } else { "⬆ Charger" };
+                            let load_label = if is_loaded { "\u{2713} Charg\u{E9}" } else { "\u{2191} Charger" };
                             let load_color = if is_loaded {
                                 egui::Color32::from_rgb(80, 200, 80)
                             } else {
@@ -85,8 +85,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
                             };
                             if ui.add(
                                 egui::Button::new(egui::RichText::new(load_label).color(load_color))
-                                    .frame(false)
-                            ).on_hover_text("Charger dans l'éditeur").clicked() {
+                            ).on_hover_text("Charger dans l'\u{E9}diteur").clicked() {
                                 to_load = Some(i);
                             }
                         });

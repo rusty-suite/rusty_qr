@@ -118,7 +118,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
                     let name = app.save_name_input.trim().to_string();
                     let can_save = !name.is_empty();
 
-                    if ui.add_enabled(can_save, egui::Button::new("✓ Enregistrer")).clicked()
+                    if ui.add_enabled(can_save, egui::Button::new("\u{2713} Enregistrer")).clicked()
                         || (ui.input(|i| i.key_pressed(egui::Key::Enter)) && can_save)
                     {
                         let tpl_state = build_template_state(app);
@@ -127,7 +127,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
                         app.save_name_input.clear();
                     }
 
-                    if ui.button("✕ Annuler").clicked() {
+                    if ui.button("\u{2715} Annuler").clicked() {
                         app.show_save_dialog = false;
                     }
                 });
@@ -138,7 +138,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
     // Indicateur "chargé depuis la bibliothèque"
     if app.loaded_library_id.is_some() {
         ui.add_space(4.0);
-        theme::hint(ui, "✎ Configuration chargée depuis la bibliothèque — modifiez puis ré-enregistrez.");
+        theme::hint(ui, "\u{270F} Configuration charg\u{E9}e depuis la biblioth\u{E8}que \u{2014} modifiez puis r\u{E9}-enregistrez.");
     }
 }
 
@@ -244,7 +244,7 @@ fn show_form(app: &mut RustyQrApp, ui: &mut Ui) -> bool {
                 lf(ui, "ID Certificat :", &mut app.form.twod_cert_id, &mut changed);
                 lf(ui, "Données (C40) :", &mut app.form.twod_c40,    &mut changed);
             });
-            theme::status_warn(ui, "⚠ 2D-Doc généré sans signature cryptographique (informatif).");
+            theme::status_warn(ui, "\u{26A0} 2D-Doc g\u{E9}n\u{E9}r\u{E9} sans signature cryptographique (informatif).");
         }
     }
 
