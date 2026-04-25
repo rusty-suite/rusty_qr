@@ -5,6 +5,7 @@ use crate::export::ExportFormat;
 use crate::history::{LibraryEntry, load_library};
 use crate::qr::types::QrForm;
 use crate::style::profile::{StyleProfile, load_profiles, save_profiles};
+use crate::template::RemoteTemplate;
 use crate::ui;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -50,6 +51,15 @@ pub struct RustyQrApp {
     // ── À propos ─────────────────────────────────────────────────────────────
     pub show_about: bool,
     pub logo_texture: Option<TextureHandle>,
+
+    // ── Thème SVG (concepteur de cartes) ─────────────────────────────────────
+    /// 0 = aucun, 1..=BUILTIN.len() = intégré, BUILTIN.len()+1 = personnalisé, au-delà = distant
+    pub selected_template_idx: usize,
+    pub custom_template_svg: Option<String>,
+    pub remote_templates: Vec<RemoteTemplate>,
+    pub remote_fetch_status: Option<(bool, String)>,
+    pub remote_fetch_rx: Option<std::sync::mpsc::Receiver<Result<Vec<RemoteTemplate>, String>>>,
+    pub remote_svg_dl: Option<(usize, std::sync::mpsc::Receiver<Result<String, String>>)>,
 }
 
 impl RustyQrApp {
@@ -76,6 +86,12 @@ impl RustyQrApp {
             export_status: None,
             show_about: false,
             logo_texture: None,
+            selected_template_idx: 0,
+            custom_template_svg: None,
+            remote_templates: Vec::new(),
+            remote_fetch_status: None,
+            remote_fetch_rx: None,
+            remote_svg_dl: None,
         }
     }
 
@@ -102,6 +118,39 @@ impl RustyQrApp {
 impl eframe::App for RustyQrApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         ctx.set_visuals(egui::Visuals::dark());
+
+        // ── Poll background template fetches ─────────────────────────────────
+        if self.remote_fetch_rx.is_some() {
+            let done = self.remote_fetch_rx.as_ref()
+                .and_then(|rx| rx.try_recv().ok());
+            if let Some(result) = done {
+                self.remote_fetch_status = Some(match result {
+                    Ok(list) => {
+                        let n = list.len();
+                        self.remote_templates = list;
+                        (true, format!("✓ {n} thème(s) chargé(s) depuis GitHub"))
+                    }
+                    Err(e) => (false, format!("✗ {e}")),
+                });
+                self.remote_fetch_rx = None;
+            }
+        }
+        if self.remote_svg_dl.is_some() {
+            let done = self.remote_svg_dl.as_ref()
+                .and_then(|(idx, rx)| rx.try_recv().ok().map(|r| (*idx, r)));
+            if let Some((idx, result)) = done {
+                self.remote_fetch_status = Some(match result {
+                    Ok(svg) => {
+                        if let Some(t) = self.remote_templates.get_mut(idx) {
+                            t.svg = Some(svg);
+                        }
+                        (true, "✓ Thème téléchargé".into())
+                    }
+                    Err(e) => (false, format!("✗ {e}")),
+                });
+                self.remote_svg_dl = None;
+            }
+        }
 
         // ── Top bar ──────────────────────────────────────────────────────────
         egui::TopBottomPanel::top("topbar").show(ctx, |ui| {
@@ -178,7 +227,7 @@ impl eframe::App for RustyQrApp {
             nav_btn(ui, &mut self.tab, Tab::Creator,      "📄 Créer QR");
             nav_btn(ui, &mut self.tab, Tab::Profiles,     "🎨 Profils de style");
             nav_btn(ui, &mut self.tab, Tab::Library,      "📚 Bibliothèque");
-            nav_btn(ui, &mut self.tab, Tab::CardDesigner, "🪪 Concepteur de cartes");
+            nav_btn(ui, &mut self.tab, Tab::CardDesigner, "🗺️ Concepteur de cartes");
             nav_btn(ui, &mut self.tab, Tab::Export,       "💾 Exporter");
 
             ui.add_space(8.0);

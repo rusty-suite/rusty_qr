@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Thème : Badge
+  Liseré vertical gauche en couleur d'accent.
+  Fonctionne avec tous les gabarits ; particulièrement adapté au Badge (90×60 mm).
+-->
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     width="{{W}}" height="{{H}}" viewBox="0 0 {{W}} {{H}}">
+
+  <!-- Fond -->
+  <rect width="{{W}}" height="{{H}}" fill="{{BG}}"/>
+
+  <!-- Liseré gauche coloré -->
+  <rect x="0" y="0" width="5" height="{{H}}" fill="{{AC}}" opacity="0.85"/>
+
+  <!-- Code QR -->
+  {{QR_IMAGE}}
+
+  <!-- Accent intégré (bandeau haut pour le gabarit Badge, barre pour Carte de visite) -->
+  {{ACCENT_BLOCK}}
+
+  <!-- Texte -->
+  {{TEXT_BLOCK}}
+
+</svg>

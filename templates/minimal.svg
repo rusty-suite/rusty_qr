@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Thème : Minimal
+  Aucune décoration — fond uni, QR et texte seulement.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     width="{{W}}" height="{{H}}" viewBox="0 0 {{W}} {{H}}">
+
+  <!-- Fond uni -->
+  <rect width="{{W}}" height="{{H}}" fill="{{BG}}"/>
+
+  <!-- Code QR -->
+  {{QR_IMAGE}}
+
+  <!-- Texte (sans accent) -->
+  {{TEXT_BLOCK}}
+
+</svg>

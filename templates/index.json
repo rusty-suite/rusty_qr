@@ -1,0 +1,26 @@
+[
+  {
+    "id": "classic",
+    "name": "Classique",
+    "description": "Fond blanc avec bordure fine, mise en page professionnelle",
+    "file": "classic.svg"
+  },
+  {
+    "id": "dark",
+    "name": "Sombre",
+    "description": "Fond sombre avec halo d'accent et bordure colorée",
+    "file": "dark.svg"
+  },
+  {
+    "id": "minimal",
+    "name": "Minimal",
+    "description": "Fond uni sans décoration, typographie épurée",
+    "file": "minimal.svg"
+  },
+  {
+    "id": "badge",
+    "name": "Badge",
+    "description": "Liseré latéral coloré, style badge / accréditation",
+    "file": "badge.svg"
+  }
+]

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Thème : Classique
+  Variables disponibles : {{W}} {{H}} {{BG}} {{FG}} {{AC}}
+                          {{QR_IMAGE}} {{ACCENT_BLOCK}} {{TEXT_BLOCK}}
+                          {{QR_X}} {{QR_Y}} {{QR_SZ}} {{F0}}..{{F4}}
+-->
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     width="{{W}}" height="{{H}}" viewBox="0 0 {{W}} {{H}}">
+
+  <!-- Fond blanc avec coins arrondis -->
+  <rect width="{{W}}" height="{{H}}" fill="{{BG}}" rx="6"/>
+
+  <!-- Bordure fine -->
+  <rect width="{{W}}" height="{{H}}" fill="none"
+        stroke="#CCCCCC" stroke-width="1.5" rx="6"/>
+
+  <!-- Code QR -->
+  {{QR_IMAGE}}
+
+  <!-- Élément d'accent (barre de séparation, bandeau…) -->
+  {{ACCENT_BLOCK}}
+
+  <!-- Champs texte -->
+  {{TEXT_BLOCK}}
+
+</svg>
