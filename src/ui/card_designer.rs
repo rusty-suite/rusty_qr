@@ -176,10 +176,25 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
             theme::status_warn(ui, "\u{26A0} G\u{E9}n\u{E9}rez d'abord un QR dans l'onglet Cr\u{E9}er.");
         }
 
-        ui.horizontal(|ui| {
-            if ui.button("SVG").clicked() { export_card_svg(app); }
-            if ui.button("PDF").clicked() { export_card_pdf(app); }
-        });
+        let exporting = app.card_export_rx.is_some();
+        if exporting {
+            theme::hint(ui, "\u{23F3} Export en cours\u{2026}");
+        } else {
+            ui.horizontal(|ui| {
+                if ui.button("SVG").on_hover_text("Vecteur — idéal pour l'impression").clicked() {
+                    export_card(app, CardExportFmt::Svg);
+                }
+                if ui.button("PDF").on_hover_text("300 dpi — prêt à imprimer").clicked() {
+                    export_card(app, CardExportFmt::Pdf);
+                }
+                if ui.button("PNG").on_hover_text("Raster 300 dpi avec transparence").clicked() {
+                    export_card(app, CardExportFmt::Png);
+                }
+                if ui.button("JPEG").on_hover_text("Raster 300 dpi — fond blanc").clicked() {
+                    export_card(app, CardExportFmt::Jpeg);
+                }
+            });
+        }
         if let Some((ok, msg)) = &app.card_export_status {
             ui.add_space(4.0);
             if *ok { theme::status_ok(ui, msg); } else { theme::status_err(ui, msg); }
@@ -517,7 +532,10 @@ fn show_egui_preview(app: &RustyQrApp, ui: &mut Ui) {
     }
 }
 
-// ─── Export functions ─────────────────────────────────────────────────────────
+// ─── Export helpers ───────────────────────────────────────────────────────────
+
+#[derive(Clone, Copy)]
+enum CardExportFmt { Svg, Pdf, Png, Jpeg }
 
 fn get_active_template_svg(app: &RustyQrApp) -> Option<&str> {
     let n  = builtin_count();
@@ -535,16 +553,29 @@ fn get_active_template_svg(app: &RustyQrApp) -> Option<&str> {
     }
 }
 
-fn export_card_svg(app: &mut RustyQrApp) {
+/// Single entry point for all card export formats.
+/// SVG is written synchronously (fast string write).
+/// PDF / PNG / JPEG are dispatched to a background thread so the UI stays responsive.
+fn export_card(app: &mut RustyQrApp, fmt: CardExportFmt) {
+    if app.card_export_rx.is_some() { return; } // already exporting
+
+    let (ext, filter) = match fmt {
+        CardExportFmt::Svg  => ("svg",  "SVG Vector"),
+        CardExportFmt::Pdf  => ("pdf",  "PDF Document"),
+        CardExportFmt::Png  => ("png",  "PNG Image"),
+        CardExportFmt::Jpeg => ("jpg",  "JPEG Image"),
+    };
+
     let Some(path) = rfd::FileDialog::new()
-        .add_filter("SVG Vector", &["svg"])
-        .set_file_name("carte_qr.svg")
+        .add_filter(filter, &[ext])
+        .set_file_name(&format!("carte_qr.{ext}"))
         .save_file()
     else { return; };
+    let path_str = path.to_string_lossy().into_owned();
 
+    // Build the SVG string (always fast — pure string substitution + QR embed)
     let matrix_ref = app.qr_matrix.as_ref();
     let profile    = app.current_profile().clone();
-
     let svg = match get_active_template_svg(app) {
         Some(tpl) => template::render(
             tpl, &app.card, matrix_ref, &profile,
@@ -554,46 +585,68 @@ fn export_card_svg(app: &mut RustyQrApp) {
         None => to_svg(&app.card, matrix_ref, &profile),
     };
 
-    let p = path.to_string_lossy().into_owned();
-    app.card_export_status = Some(match std::fs::write(&p, svg) {
-        Ok(_)  => (true,  format!("\u{2713} SVG export\u{E9} : {p}")),
-        Err(e) => (false, format!("\u{2717} {e}")),
-    });
-}
-
-fn export_card_pdf(app: &mut RustyQrApp) {
-    let Some(path) = rfd::FileDialog::new()
-        .add_filter("PDF Document", &["pdf"])
-        .set_file_name("carte_qr.pdf")
-        .save_file()
-    else { return; };
-
-    let matrix_ref = app.qr_matrix.as_ref();
-    let profile    = app.current_profile().clone();
-    let p          = path.to_string_lossy().into_owned();
-
-    // 1. Generate SVG (template or built-in layout)
-    let svg_str = match get_active_template_svg(app) {
-        Some(tpl) => template::render(
-            tpl, &app.card, matrix_ref, &profile,
-            &app.template_field_data, &app.template_color_data,
-            app.form.ec_level,
-        ),
-        None => to_svg(&app.card, matrix_ref, &profile),
-    };
-
-    // 2. Rasterize at 300 DPI (canvas was designed at 96 DPI)
-    let pdf_scale = 300.0_f32 / 96.0;
-    let result = match crate::template::svg_to_rgba_scaled(&svg_str, pdf_scale) {
-        Some((rgba, w, h)) => {
-            let (orig_w, orig_h) = app.card.layout.canvas_px();
-            crate::export::pdf::export_from_rgba(&rgba, w, h, orig_w, orig_h, &p)
+    match fmt {
+        // ── SVG: plain write, no rasterization needed ─────────────────────
+        CardExportFmt::Svg => {
+            app.card_export_status = Some(match std::fs::write(&path_str, &svg) {
+                Ok(_)  => (true,  format!("\u{2713} SVG export\u{E9} : {path_str}")),
+                Err(e) => (false, format!("\u{2717} {e}")),
+            });
         }
-        None => Err("Impossible de rast\u{E9}riser le SVG".into()),
-    };
 
-    app.card_export_status = Some(match result {
-        Ok(_)  => (true,  format!("\u{2713} PDF export\u{E9} : {p}")),
-        Err(e) => (false, format!("\u{2717} {e}")),
-    });
+        // ── Raster / PDF: heavy work → background thread ──────────────────
+        _ => {
+            let (orig_w, orig_h) = app.card.layout.canvas_px();
+            let (tx, rx) = std::sync::mpsc::channel();
+            app.card_export_rx    = Some(rx);
+            app.card_export_status = Some((true, "\u{23F3} Export en cours\u{2026}".into()));
+
+            std::thread::spawn(move || {
+                const DPI_SCALE: f32 = 300.0 / 96.0; // 300 DPI output
+
+                let result: Result<(), String> = match fmt {
+                    CardExportFmt::Pdf => {
+                        match crate::template::svg_to_rgba_scaled(&svg, DPI_SCALE) {
+                            Some((rgba, w, h)) =>
+                                crate::export::pdf::export_from_rgba(&rgba, w, h, orig_w, orig_h, &path_str),
+                            None => Err("Impossible de rast\u{E9}riser le SVG".into()),
+                        }
+                    }
+                    CardExportFmt::Png => {
+                        match crate::template::svg_to_rgba_scaled(&svg, DPI_SCALE) {
+                            Some((rgba, w, h)) =>
+                                image::save_buffer(&path_str, &rgba, w, h, image::ColorType::Rgba8)
+                                    .map_err(|e| e.to_string()),
+                            None => Err("Impossible de rast\u{E9}riser le SVG".into()),
+                        }
+                    }
+                    CardExportFmt::Jpeg => {
+                        match crate::template::svg_to_rgba_scaled(&svg, DPI_SCALE) {
+                            Some((rgba, w, h)) => {
+                                // Alpha-composite onto white before JPEG encoding (no alpha in JPEG)
+                                let rgb: Vec<u8> = rgba.chunks_exact(4).flat_map(|p| {
+                                    let a = p[3] as f32 / 255.0;
+                                    [
+                                        (p[0] as f32 * a + 255.0 * (1.0 - a)) as u8,
+                                        (p[1] as f32 * a + 255.0 * (1.0 - a)) as u8,
+                                        (p[2] as f32 * a + 255.0 * (1.0 - a)) as u8,
+                                    ]
+                                }).collect();
+                                image::save_buffer(&path_str, &rgb, w, h, image::ColorType::Rgb8)
+                                    .map_err(|e| e.to_string())
+                            }
+                            None => Err("Impossible de rast\u{E9}riser le SVG".into()),
+                        }
+                    }
+                    CardExportFmt::Svg => unreachable!(),
+                };
+
+                let msg = match result {
+                    Ok(_)  => Ok(format!("\u{2713} Export\u{E9} : {path_str}")),
+                    Err(e) => Err(format!("\u{2717} {e}")),
+                };
+                let _ = tx.send(msg);
+            });
+        }
+    }
 }

@@ -4,7 +4,7 @@ use crate::card::CardConfig;
 use crate::export::ExportFormat;
 use crate::history::{LibraryEntry, load_library};
 use crate::qr::types::QrForm;
-use crate::style::profile::{StyleProfile, load_profiles, save_profiles};
+use crate::style::{profile::{StyleProfile, load_profiles, save_profiles}, renderer};
 use crate::template::{RemoteTemplate, TemplateColor, TemplateField};
 use crate::ui;
 
@@ -58,6 +58,14 @@ pub struct RustyQrApp {
     pub logo_dl_rx: Option<std::sync::mpsc::Receiver<Result<std::path::PathBuf, String>>>,
     pub logo_dl_status: Option<(bool, String)>,
 
+    // ── Cached rendered QR image (identical to right-panel preview) ───────────
+    /// Kept in sync with preview_dirty; shared with the template preview so
+    /// build_qr_image can embed it directly instead of re-rendering.
+    pub qr_rendered_image: Option<image::RgbaImage>,
+
+    // ── Card export (background thread) ──────────────────────────────────────
+    pub card_export_rx: Option<std::sync::mpsc::Receiver<Result<String, String>>>,
+
     pub selected_template_idx: usize,
     pub custom_template_svg: Option<String>,
     pub template_field_data: Vec<TemplateField>,
@@ -97,6 +105,8 @@ impl RustyQrApp {
             logo_texture: None,
             logo_dl_rx: None,
             logo_dl_status: None,
+            qr_rendered_image: None,
+            card_export_rx: None,
             selected_template_idx: 0,
             custom_template_svg: None,
             template_field_data: Vec::new(),
@@ -121,6 +131,7 @@ impl RustyQrApp {
     /// À appeler dès que le QR ou le profil actif change.
     pub fn mark_qr_dirty(&mut self) {
         self.preview_dirty = true;
+        self.qr_rendered_image = None; // invalidate cached render
         if self.selected_template_idx > 0 {
             self.template_preview_dirty = true;
         }
@@ -197,12 +208,34 @@ impl eframe::App for RustyQrApp {
             }
         }
 
+        // ── Poll card export background thread ───────────────────────────────
+        if let Some(rx) = &self.card_export_rx {
+            if let Ok(result) = rx.try_recv() {
+                self.card_export_rx = None;
+                self.card_export_status = Some(match result {
+                    Ok(msg)  => (true,  msg),
+                    Err(msg) => (false, msg),
+                });
+            }
+        }
+
         // ── Template SVG preview (re-render when dirty) ──────────────────────
         if self.template_preview_dirty {
             self.template_preview_dirty = false;
             if self.selected_template_idx == 0 {
                 self.template_preview_texture = None;
             } else {
+                // If the QR image cache was invalidated, re-render it now so the
+                // template preview uses the freshest render without waiting for
+                // the right-panel preview.rs to run later this frame.
+                if self.qr_rendered_image.is_none() {
+                    if let Some(matrix) = &self.qr_matrix {
+                        let profile = self.current_profile().clone();
+                        let ec = self.form.ec_level;
+                        self.qr_rendered_image = Some(renderer::render_ec(matrix, &profile, ec));
+                    }
+                }
+
                 // Retrieve the template SVG string without keeping a borrow on self
                 let tpl_svg: Option<String> = {
                     let n = crate::template::BUILTIN.len();
@@ -218,13 +251,15 @@ impl eframe::App for RustyQrApp {
                     }
                 };
                 if let Some(svg_str) = tpl_svg {
-                    let profile     = self.current_profile().clone();
-                    let matrix_ref  = self.qr_matrix.as_ref();
+                    let profile    = self.current_profile().clone();
+                    let matrix_ref = self.qr_matrix.as_ref();
+                    let qr_img_ref = self.qr_rendered_image.as_ref();
                     let preview_svg = crate::template::render_preview(
                         &svg_str, &self.card,
                         &self.template_field_data, &self.template_color_data,
                         matrix_ref, &profile,
                         self.form.ec_level,
+                        qr_img_ref,
                     );
                     if let Some((rgba, w, h)) = crate::template::svg_to_rgba(&preview_svg, 400, 320) {
                         let img = egui::ColorImage::from_rgba_unmultiplied(
