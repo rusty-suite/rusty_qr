@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  RustyQR Theme: Rétro Vintage
+  Carte de visite style timbre postal / carte postale ancienne.
+  Fond papier crème, bordure perforée, ornements en coin.
+
+  @palette BG=#F5E6C8 FG=#3D2B1F AC=#B5451B
+
+  Variables: {{W}} {{H}} {{BG}} {{FG}} {{AC}} {{QR_IMAGE}}
+             {{TX}} {{TA}} {{TY0}}..{{TY4}} {{AX}} {{AY}} {{AW}} {{AH}}
+             {{F0:default}}..{{F4:default}}
+             {{C0:#B5451B|Rouge brique}} {{C1:#8B6914|Or antique}}
+-->
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="{{W}}" height="{{H}}" viewBox="0 0 {{W}} {{H}}">
+
+  <defs>
+    <!-- Dégradé de papier vieilli -->
+    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#F8EDD5"/>
+      <stop offset="100%" stop-color="#E8D5A8"/>
+    </linearGradient>
+    <!-- Légère patine diagonale -->
+    <linearGradient id="patine" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#C08040" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#703010" stop-opacity="0.12"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Fond papier -->
+  <rect width="{{W}}" height="{{H}}" fill="url(#paper)"/>
+  <rect width="{{W}}" height="{{H}}" fill="url(#patine)"/>
+
+  <!-- Bordure perforée style timbre (stroke centré sur le bord → demi visible) -->
+  <rect x="0" y="0" width="{{W}}" height="{{H}}"
+        fill="none"
+        stroke="{{C0:#B5451B}}" stroke-width="5"
+        stroke-dasharray="5,4" opacity="0.65"/>
+
+  <!-- Filet intérieur fin -->
+  <rect x="8" y="8" width="{{W}}" height="{{H}}"
+        fill="none"
+        stroke="{{C1:#8B6914}}" stroke-width="0.75" opacity="0.45"/>
+
+  <!-- Ornements de coin (carrés) -->
+  <rect x="10"       y="10"       width="7" height="7" fill="{{C1:#8B6914}}" opacity="0.55"/>
+  <rect x="10"       y="10"       width="7" height="7" fill="none" stroke="{{C0:#B5451B}}" stroke-width="0.75" opacity="0.7"/>
+
+  <!-- Filigrane "POST CARD" très discret en fond -->
+  <text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle"
+        font-family="Georgia, serif" font-size="28" font-weight="bold"
+        fill="{{C0:#B5451B}}" opacity="0.05" transform="rotate(-15, {{W}}, {{H}})">POST CARD</text>
+
+  <!-- Code QR -->
+  {{QR_IMAGE}}
+
+  <!-- Séparateur vertical style barre de timbre -->
+  <rect x="{{AX}}" y="{{AY}}" width="{{AW}}" height="{{AH}}"
+        fill="{{C1:#8B6914}}" opacity="0.5"/>
+
+  <!-- Ligne décorative courte au-dessus du nom -->
+  <line x1="{{TX}}" y1="{{TY0}}" x2="{{TX}}" y2="{{TY0}}"
+        stroke="{{C0:#B5451B}}" stroke-width="0"/>
+
+  <!-- Nom -->
+  <text x="{{TX}}" y="{{TY0}}" text-anchor="{{TA}}"
+        font-family="Georgia, 'Times New Roman', serif"
+        font-size="14" font-weight="bold" fill="{{FG}}">{{F0:Prénom Nom}}</text>
+
+  <!-- Titre en couleur principale -->
+  <text x="{{TX}}" y="{{TY1}}" text-anchor="{{TA}}"
+        font-family="Georgia, 'Times New Roman', serif"
+        font-size="10" fill="{{C0:#B5451B}}" font-style="italic">{{F1:Titre / Profession}}</text>
+
+  <text x="{{TX}}" y="{{TY2}}" text-anchor="{{TA}}"
+        font-family="Georgia, 'Times New Roman', serif"
+        font-size="9" fill="{{FG}}" opacity="0.70">{{F2:Téléphone}}</text>
+
+  <text x="{{TX}}" y="{{TY3}}" text-anchor="{{TA}}"
+        font-family="Georgia, 'Times New Roman', serif"
+        font-size="9" fill="{{FG}}" opacity="0.70">{{F3:Email}}</text>
+
+  <text x="{{TX}}" y="{{TY4}}" text-anchor="{{TA}}"
+        font-family="Georgia, 'Times New Roman', serif"
+        font-size="9" fill="{{C1:#8B6914}}" opacity="0.85">{{F4:Site web}}</text>
+
+</svg>

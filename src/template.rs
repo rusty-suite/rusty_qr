@@ -39,9 +39,10 @@ pub struct BuiltinTemplate {
 }
 
 pub const BUILTIN: &[BuiltinTemplate] = &[
+    // ── Thèmes classiques ─────────────────────────────────────────────────────
     BuiltinTemplate {
         id: "classic", name: "Classique",
-        description: "Fond blanc avec bordure, texte organisé par le thème",
+        description: "Fond blanc avec bordure, texte organis\u{E9} par le th\u{E8}me",
         svg: include_str!("../templates/classic.svg"),
     },
     BuiltinTemplate {
@@ -51,28 +52,79 @@ pub const BUILTIN: &[BuiltinTemplate] = &[
     },
     BuiltinTemplate {
         id: "minimal", name: "Minimal",
-        description: "Fond uni, aucune décoration, typographie épurée",
+        description: "Fond uni, aucune d\u{E9}coration, typographie \u{E9}pur\u{E9}e",
         svg: include_str!("../templates/minimal.svg"),
     },
     BuiltinTemplate {
         id: "badge", name: "Badge",
-        description: "Liseré coloré, style accréditation / badge",
+        description: "Liser\u{E9} color\u{E9}, style acr\u{E9}ditation / badge",
         svg: include_str!("../templates/badge.svg"),
     },
     BuiltinTemplate {
-        id: "modern", name: "Épuré Pro",
-        description: "Bandeau dégradé, coins arrondis, palette personnalisable",
+        id: "modern", name: "\u{C9}pur\u{E9} Pro",
+        description: "Bandeau d\u{E9}grad\u{E9}, coins arrondis, palette personnalisable",
         svg: include_str!("../templates/modern.svg"),
     },
     BuiltinTemplate {
-        id: "neon", name: "Néon",
-        description: "Fond sombre, bordure et texte lumineux style néon",
+        id: "neon", name: "N\u{E9}on",
+        description: "Fond sombre, bordure et texte lumineux style n\u{E9}on",
         svg: include_str!("../templates/neon.svg"),
     },
     BuiltinTemplate {
-        id: "gradient", name: "Dégradé",
-        description: "Panneau gauche en dégradé, zone texte claire à droite",
+        id: "gradient", name: "D\u{E9}grad\u{E9}",
+        description: "Panneau gauche en d\u{E9}grad\u{E9}, zone texte claire \u{E0} droite",
         svg: include_str!("../templates/gradient.svg"),
+    },
+    // ── Nouveaux thèmes artistiques ───────────────────────────────────────────
+    BuiltinTemplate {
+        id: "retro", name: "R\u{E9}tro Vintage",
+        description: "Papier cr\u{E8}me, bordure perfore\u{E9}e, typographie s\u{E9}rif chaleureuse",
+        svg: include_str!("../templates/retro.svg"),
+    },
+    BuiltinTemplate {
+        id: "aurora", name: "Aurore Bor\u{E9}ale",
+        description: "Ciel nocturne, nappes aurora violet\u{2013}turquoise, \u{E9}toiles",
+        svg: include_str!("../templates/aurora.svg"),
+    },
+    BuiltinTemplate {
+        id: "swiss", name: "Design Suisse",
+        description: "Style typographique international, rouge vif, grille stricte",
+        svg: include_str!("../templates/swiss.svg"),
+    },
+    BuiltinTemplate {
+        id: "glass", name: "Verre Givr\u{E9}",
+        description: "Glassmorphisme : fond color\u{E9}, panneau translucide givr\u{E9}",
+        svg: include_str!("../templates/glass.svg"),
+    },
+    BuiltinTemplate {
+        id: "zen", name: "Zen / Sumi-e",
+        description: "Esth\u{E9}tique japonaise : papier washi, coup de pinceau, sceau rouge",
+        svg: include_str!("../templates/zen.svg"),
+    },
+    BuiltinTemplate {
+        id: "cyber", name: "Cyberpunk",
+        description: "Fond noir, jaune \u{E9}lectrique, lignes de scan, terminal monospace",
+        svg: include_str!("../templates/cyber.svg"),
+    },
+    BuiltinTemplate {
+        id: "artdeco", name: "Art D\u{E9}co",
+        description: "Fond sombre riche, ornements g\u{E9}om\u{E9}triques dor\u{E9}s, \u{E9}l\u{E9}gance 1920",
+        svg: include_str!("../templates/artdeco.svg"),
+    },
+    BuiltinTemplate {
+        id: "brutal", name: "Brutaliste",
+        description: "Blanc\u{2013}noir pur, bordure \u{E9}paisse, ombre port\u{E9}e d\u{E9}cal\u{E9}e, accent rouge",
+        svg: include_str!("../templates/brutal.svg"),
+    },
+    BuiltinTemplate {
+        id: "nordic", name: "Scandinave",
+        description: "Bleu-gris doux, formes organiques, vert for\u{EA}t, harmonie naturelle",
+        svg: include_str!("../templates/nordic.svg"),
+    },
+    BuiltinTemplate {
+        id: "isometric", name: "Tech Is\u{F4}m\u{E9}trique",
+        description: "Navy profond, grille isom\u{E9}trique cyan, interface donn\u{E9}es futuriste",
+        svg: include_str!("../templates/isometric.svg"),
     },
 ];
 

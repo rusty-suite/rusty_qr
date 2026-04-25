@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  RustyQR Theme: Scandinave / Nordic
+  Design épuré d'inspiration nordique : fond bleu-gris doux,
+  formes organiques (cercles, courbes), vert forêt, harmonie naturelle.
+
+  @palette BG=#EDF2F7 FG=#2D3748 AC=#2F855A
+
+  Variables: {{W}} {{H}} {{BG}} {{FG}} {{AC}} {{QR_IMAGE}}
+             {{TX}} {{TA}} {{TY0}}..{{TY4}} {{AX}} {{AY}} {{AW}} {{AH}}
+             {{F0:default}}..{{F4:default}}
+             {{C0:#2F855A|Vert forêt}} {{C1:#2B6CB0|Bleu fjord}} {{C2:#F0FFF4|Blanc vert}}
+-->
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="{{W}}" height="{{H}}" viewBox="0 0 {{W}} {{H}}">
+
+  <defs>
+    <!-- Fond doux -->
+    <linearGradient id="nordbg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#EDF2F7"/>
+      <stop offset="100%" stop-color="#E2ECF5"/>
+    </linearGradient>
+    <!-- Cercle organique coin (forêt) -->
+    <radialGradient id="forest" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="{{C0:#2F855A}}" stop-opacity="0.20"/>
+      <stop offset="100%" stop-color="{{C0:#2F855A}}" stop-opacity="0"/>
+    </radialGradient>
+    <!-- Cercle organique (fjord) -->
+    <radialGradient id="fjord" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="{{C1:#2B6CB0}}" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="{{C1:#2B6CB0}}" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Fond -->
+  <rect width="{{W}}" height="{{H}}" fill="url(#nordbg)" rx="6"/>
+
+  <!-- Cercle organique vert en arrière-plan (coin haut-gauche) -->
+  <circle cx="-15%" cy="-10%" r="45%" fill="url(#forest)"/>
+
+  <!-- Cercle bleu (coin bas-droit) -->
+  <circle cx="115%" cy="110%" r="40%" fill="url(#fjord)"/>
+
+  <!-- Bande verte mince en bas -->
+  <rect x="0" y="{{H}}" width="{{W}}" height="4"
+        fill="{{C0:#2F855A}}" opacity="0.60" rx="2"
+        transform="translate(0,-4)"/>
+
+  <!-- Motif points nordiques en haut à droite (décoratif) -->
+  <circle cx="{{W}}" cy="8" r="2.5" fill="{{C0:#2F855A}}" opacity="0.25" transform="translate(-22,0)"/>
+  <circle cx="{{W}}" cy="8" r="2.5" fill="{{C0:#2F855A}}" opacity="0.20" transform="translate(-32,0)"/>
+  <circle cx="{{W}}" cy="8" r="2.5" fill="{{C1:#2B6CB0}}" opacity="0.18" transform="translate(-42,0)"/>
+  <circle cx="{{W}}" cy="8" r="1.5" fill="{{C0:#2F855A}}" opacity="0.15" transform="translate(-52,0)"/>
+
+  <!-- Code QR -->
+  {{QR_IMAGE}}
+
+  <!-- Barre de séparation verte douce -->
+  <rect x="{{AX}}" y="{{AY}}" width="{{AW}}" height="{{AH}}"
+        fill="{{C0:#2F855A}}" opacity="0.45" rx="2"/>
+
+  <!-- Petite branche décorative (3 points) au-dessus du nom -->
+  <circle cx="{{TX}}" cy="{{TY0}}" r="2" fill="{{C0:#2F855A}}" opacity="0.40"
+          transform="translate(0,-12)"/>
+  <circle cx="{{TX}}" cy="{{TY0}}" r="1.5" fill="{{C0:#2F855A}}" opacity="0.30"
+          transform="translate(6,-10)"/>
+  <circle cx="{{TX}}" cy="{{TY0}}" r="1.5" fill="{{C1:#2B6CB0}}" opacity="0.25"
+          transform="translate(-6,-10)"/>
+
+  <!-- Nom -->
+  <text x="{{TX}}" y="{{TY0}}" text-anchor="{{TA}}"
+        font-family="'Gill Sans', 'Gill Sans MT', Calibri, Arial, sans-serif"
+        font-size="14" font-weight="bold"
+        fill="{{FG}}">{{F0:Votre Nom}}</text>
+
+  <!-- Titre en vert -->
+  <text x="{{TX}}" y="{{TY1}}" text-anchor="{{TA}}"
+        font-family="'Gill Sans', Calibri, Arial, sans-serif"
+        font-size="10" fill="{{C0:#2F855A}}">{{F1:Titre / Poste}}</text>
+
+  <text x="{{TX}}" y="{{TY2}}" text-anchor="{{TA}}"
+        font-family="'Gill Sans', Calibri, Arial, sans-serif"
+        font-size="9" fill="{{FG}}" opacity="0.55">{{F2:Téléphone}}</text>
+
+  <text x="{{TX}}" y="{{TY3}}" text-anchor="{{TA}}"
+        font-family="'Gill Sans', Calibri, Arial, sans-serif"
+        font-size="9" fill="{{FG}}" opacity="0.55">{{F3:Email}}</text>
+
+  <text x="{{TX}}" y="{{TY4}}" text-anchor="{{TA}}"
+        font-family="'Gill Sans', Calibri, Arial, sans-serif"
+        font-size="9" fill="{{C1:#2B6CB0}}" opacity="0.75">{{F4:Site web}}</text>
+
+</svg>
