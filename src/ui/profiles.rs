@@ -280,28 +280,28 @@ fn profile_editor(
                 ui.end_row();
 
                 ui.label("Marge fond blanc :");
-                ui.vertical(|ui| {
-                    let mut pad = profile.logo_padding as i32;
-                    if ui.add(
-                        egui::Slider::new(&mut pad, 0..=20)
-                            .suffix(" px")
-                            .custom_formatter(|v, _| {
-                                if v == 0.0 { "0 — aucun fond".into() }
-                                else { format!("{v:.0} px") }
-                            })
-                    ).changed() {
-                        profile.logo_padding = pad as u32;
-                        *save_dirty = true;
-                    }
-                    if profile.logo_padding == 0 {
-                        ui.label(
-                            egui::RichText::new("Logo superpos\u{E9} directement (transparent)")
-                                .small()
-                                .color(egui::Color32::from_rgb(140, 180, 220)),
-                        );
-                    }
-                });
+                let mut pad = profile.logo_padding as i32;
+                if ui.add(
+                    egui::Slider::new(&mut pad, 0..=20)
+                        .custom_formatter(|v, _| {
+                            if v == 0.0 { "0 \u{2014} aucun fond".into() }
+                            else { format!("{v:.0} px") }
+                        })
+                ).changed() {
+                    profile.logo_padding = pad as u32;
+                    *save_dirty = true;
+                }
                 ui.end_row();
+
+                if profile.logo_padding == 0 {
+                    ui.label("");
+                    ui.label(
+                        egui::RichText::new("\u{2192} logo superpos\u{E9} sans fond blanc")
+                            .small()
+                            .color(egui::Color32::from_rgb(140, 180, 220)),
+                    );
+                    ui.end_row();
+                }
             });
 
         ui.add_space(8.0);
