@@ -19,7 +19,8 @@ pub fn show_preview(app: &mut RustyQrApp, ui: &mut Ui, ctx: &Context) {
     if app.preview_dirty {
         if let Some(matrix) = &app.qr_matrix {
             let profile = app.current_profile().clone();
-            let img = renderer::render(matrix, &profile);
+            let ec      = app.form.ec_level;
+            let img = renderer::render_ec(matrix, &profile, ec);
             let color_img = renderer::to_egui_image(&img);
             app.preview_texture = Some(ctx.load_texture(
                 "qr_preview",

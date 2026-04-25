@@ -1,6 +1,7 @@
 use egui::Ui;
 use crate::app::RustyQrApp;
-use crate::style::profile::StyleProfile;
+use crate::qr::types::EcLevel;
+use crate::style::{profile::StyleProfile, renderer};
 use crate::theme;
 
 pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
@@ -101,9 +102,10 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
 
         // ── Colonne droite : éditeur ─────────────────────────────────────────
         let ui = &mut cols[1];
+        let ec = app.form.ec_level;
         if let Some(profile) = app.profiles.get_mut(app.selected_profile) {
             profile_editor(
-                ui, profile,
+                ui, profile, ec,
                 &mut app.preview_dirty, &mut app.profiles_dirty,
                 &mut app.logo_dl_rx, &mut app.logo_dl_status,
             );
@@ -120,6 +122,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
 fn profile_editor(
     ui: &mut Ui,
     profile: &mut StyleProfile,
+    ec: EcLevel,
     preview_dirty: &mut bool,
     save_dirty: &mut bool,
     logo_dl_rx: &mut Option<std::sync::mpsc::Receiver<Result<std::path::PathBuf, String>>>,
@@ -250,14 +253,31 @@ fn profile_editor(
                     ui.end_row();
                 }
 
+                // ── Taille du logo avec plafond dynamique basé sur EC ─────────
+                let max_r = renderer::max_logo_ratio(ec);
                 ui.label("Taille (ratio) :");
-                let mut r = profile.logo_ratio;
-                if ui.add(
-                    egui::Slider::new(&mut r, 0.0..=0.30)
-                        .custom_formatter(|v, _| format!("{:.0}%", v * 100.0))
-                ).changed() {
-                    profile.logo_ratio = r; *save_dirty = true;
-                }
+                ui.vertical(|ui| {
+                    // Forcer le ratio dans la limite EC si déjà trop grand
+                    if profile.logo_ratio > max_r {
+                        profile.logo_ratio = max_r;
+                        *save_dirty = true;
+                    }
+                    let mut r = profile.logo_ratio;
+                    if ui.add(
+                        egui::Slider::new(&mut r, 0.0..=max_r)
+                            .custom_formatter(|v, _| format!("{:.0}%", v * 100.0))
+                    ).changed() {
+                        profile.logo_ratio = r; *save_dirty = true;
+                    }
+                    ui.label(
+                        egui::RichText::new(format!(
+                            "Max EC {} : {:.0}%  \u{2014}  actuel : {:.0}%",
+                            ec.label(), max_r * 100.0, profile.logo_ratio * 100.0
+                        ))
+                        .small()
+                        .color(egui::Color32::from_rgb(140, 180, 220)),
+                    );
+                });
                 ui.end_row();
 
                 ui.label("Marge blanche (px) :");
@@ -322,18 +342,27 @@ fn profile_editor(
         theme::hint(ui, "Cliquez sur une cellule pour positionner le logo.\nLe centre est la position recommandée (•).");
 
         // Safe zone info
-        ui.add_space(4.0);
-        let pct = (profile.logo_ratio * 100.0) as u32;
-        let msg = match pct {
-            0 => None,
-            1..=7  => Some(("✓ Zone sûre (EC L minimum)", egui::Color32::from_rgb(80, 200, 80))),
-            8..=15 => Some(("✓ Zone sûre (EC M minimum)", egui::Color32::from_rgb(80, 200, 80))),
-            16..=25=> Some(("⚠ Utilisez EC Q ou H", egui::Color32::from_rgb(220, 160, 60))),
-            26..=30=> Some(("⚠ Utilisez EC H uniquement", egui::Color32::from_rgb(220, 120, 60))),
-            _      => Some(("✗ Logo trop grand — lisibilité compromise", egui::Color32::from_rgb(220, 80, 80))),
-        };
-        if let Some((text, color)) = msg {
-            ui.label(egui::RichText::new(text).small().color(color));
+        // ── Indicateur lisibilité ─────────────────────────────────────────────
+        if profile.logo_ratio > 0.005 {
+            ui.add_space(4.0);
+            let ratio  = profile.logo_ratio;
+            let max_ec = renderer::max_logo_ratio(ec);
+            let (icon, text, color) = if ratio <= max_ec {
+                ("\u{2713}", format!(
+                    "QR lisible avec {} (logo \u{2264} {:.0}%)",
+                    ec.label(), max_ec * 100.0
+                ), egui::Color32::from_rgb(80, 200, 80))
+            } else {
+                ("\u{26A0}", format!(
+                    "Logo trop grand pour {} \u{2014} r\u{E9}duisez ou passez en EC H",
+                    ec.label()
+                ), egui::Color32::from_rgb(220, 100, 60))
+            };
+            ui.label(
+                egui::RichText::new(format!("{icon} {text}"))
+                    .small()
+                    .color(color),
+            );
         }
 
         *preview_dirty = true;

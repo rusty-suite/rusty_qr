@@ -200,17 +200,21 @@ pub fn render(
     substitute(&t2, &vars)
 }
 
-/// Like `render()` but uses a placeholder rect instead of the QR PNG — fast,
-/// suitable for live preview (no PNG encoding).
+/// Like `render()` but optimised for live preview.
+/// Passes the real QR matrix when available (so the preview matches the export);
+/// falls back to a gray placeholder rect when no QR has been generated yet.
 pub fn render_preview(
     template: &str,
     config:   &CardConfig,
     fields:   &[TemplateField],
     colors:   &[TemplateColor],
+    matrix:   Option<&QrMatrix>,
+    profile:  &StyleProfile,
 ) -> String {
-    let t1   = preprocess_colors(template, colors);
-    let t2   = preprocess_defaults(&t1, fields);
-    let vars = build_vars(config, None, &StyleProfile::default(), fields, true);
+    let t1      = preprocess_colors(template, colors);
+    let t2      = preprocess_defaults(&t1, fields);
+    let preview = matrix.is_none(); // use placeholder only when no matrix
+    let vars    = build_vars(config, matrix, profile, fields, preview);
     substitute(&t2, &vars)
 }
 
