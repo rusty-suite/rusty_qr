@@ -122,6 +122,11 @@ impl RustyQrApp {
             Err(e) => { self.qr_matrix = None; self.qr_error = Some(e.to_string()); }
         }
         self.preview_dirty = true;
+        // Si un thème SVG est actif, sa prévisualisation doit être mise à jour
+        // pour refléter le nouveau QR code.
+        if self.selected_template_idx > 0 {
+            self.template_preview_dirty = true;
+        }
     }
 
     pub fn save_profiles(&self) {
@@ -208,9 +213,12 @@ impl eframe::App for RustyQrApp {
                     }
                 };
                 if let Some(svg_str) = tpl_svg {
+                    let profile     = self.current_profile().clone();
+                    let matrix_ref  = self.qr_matrix.as_ref();
                     let preview_svg = crate::template::render_preview(
                         &svg_str, &self.card,
                         &self.template_field_data, &self.template_color_data,
+                        matrix_ref, &profile,
                     );
                     if let Some((rgba, w, h)) = crate::template::svg_to_rgba(&preview_svg, 400, 320) {
                         let img = egui::ColorImage::from_rgba_unmultiplied(
