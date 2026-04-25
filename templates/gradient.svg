@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  RustyQR Theme: Dégradé
+  Panneau gauche en dégradé vertical (QR + couleur), panneau droit clair (texte).
+  Idéal pour la carte de visite (85×54 mm).
+
+  @palette BG=#F7F8FC FG=#1A1A2E AC=#667EEA
+
+  Variables: {{W}} {{H}} {{BG}} {{FG}} {{AC}} {{QR_IMAGE}}
+             {{TX}} {{TA}} {{TY0}}..{{TY4}} {{AX}} {{AY}} {{AW}} {{AH}}
+             {{F0:default}}..{{F4:default}}
+             {{C0:#667EEA|Début dégradé}} {{C1:#764BA2|Fin dégradé}}
+-->
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="{{W}}" height="{{H}}" viewBox="0 0 {{W}} {{H}}">
+
+  <defs>
+    <linearGradient id="leftgrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="{{C0:#667EEA}}"/>
+      <stop offset="100%" stop-color="{{C1:#764BA2}}"/>
+    </linearGradient>
+    <!-- Lueur douce sur le panneau droit -->
+    <linearGradient id="rightfade" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="{{C0:#667EEA}}" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="{{C0:#667EEA}}" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Fond clair global (coins arrondis) -->
+  <rect width="{{W}}" height="{{H}}" fill="{{BG}}" rx="8"/>
+
+  <!-- Panneau gauche dégradé (AX = séparation entre QR et texte) -->
+  <rect x="0" y="0" width="{{AX}}" height="{{H}}" fill="url(#leftgrad)"/>
+  <!-- Arrondi côté gauche uniquement (recouvre les coins carrés de rect précédent) -->
+  <rect x="0" y="0" width="12" height="{{H}}" fill="url(#leftgrad)" rx="8"/>
+
+  <!-- Lueur de transition sur le panneau droit -->
+  <rect x="{{AX}}" y="0" width="40" height="{{H}}" fill="url(#rightfade)"/>
+
+  <!-- Code QR (s'affiche sur le panneau gauche coloré) -->
+  {{QR_IMAGE}}
+
+  <!-- Barre fine de séparation décorative -->
+  <rect x="{{AX}}" y="0" width="3" height="{{H}}" fill="{{C1:#764BA2}}" opacity="0.25"/>
+
+  <!-- Bordure extérieure subtile -->
+  <rect width="{{W}}" height="{{H}}" fill="none"
+        stroke="#D0D0E0" stroke-width="1" rx="8"/>
+
+  <!-- Texte — panneau droit -->
+  <!-- Nom — gras -->
+  <text x="{{TX}}" y="{{TY0}}" text-anchor="{{TA}}"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="14" font-weight="bold" fill="{{FG}}">{{F0:Votre Nom}}</text>
+
+  <!-- Titre en couleur gradient principale -->
+  <text x="{{TX}}" y="{{TY1}}" text-anchor="{{TA}}"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="10" fill="{{C0:#667EEA}}">{{F1:Titre / Poste}}</text>
+
+  <text x="{{TX}}" y="{{TY2}}" text-anchor="{{TA}}"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="9" fill="{{FG}}" opacity="0.70">{{F2:Téléphone}}</text>
+
+  <text x="{{TX}}" y="{{TY3}}" text-anchor="{{TA}}"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="9" fill="{{FG}}" opacity="0.70">{{F3:Email}}</text>
+
+  <text x="{{TX}}" y="{{TY4}}" text-anchor="{{TA}}"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="9" fill="{{C1:#764BA2}}" opacity="0.90">{{F4:Site web}}</text>
+
+</svg>

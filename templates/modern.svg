@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  RustyQR Theme: Épuré Pro
+  Bandeau supérieur dégradé, fond blanc arrondi, barre latérale accent.
+  Couleurs personnalisables via les slots C0 (primaire) et C1 (secondaire).
+
+  @palette BG=#FFFFFF FG=#1C1C2E AC=#6C63FF
+
+  Variables: {{W}} {{H}} {{BG}} {{FG}} {{AC}} {{QR_IMAGE}}
+             {{TX}} {{TA}} {{TY0}}..{{TY4}} {{AX}} {{AY}} {{AW}} {{AH}}
+             {{F0:default}}..{{F4:default}}
+             {{C0:#6C63FF|Couleur principale}} {{C1:#A29BFE|Couleur secondaire}}
+-->
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="{{W}}" height="{{H}}" viewBox="0 0 {{W}} {{H}}">
+
+  <defs>
+    <linearGradient id="band" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="{{C0:#6C63FF}}"/>
+      <stop offset="100%" stop-color="{{C1:#A29BFE}}"/>
+    </linearGradient>
+    <linearGradient id="bargrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="{{C0:#6C63FF}}"/>
+      <stop offset="100%" stop-color="{{C1:#A29BFE}}"/>
+    </linearGradient>
+    <filter id="cardshadow" x="-4%" y="-4%" width="108%" height="116%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#00000020"/>
+    </filter>
+  </defs>
+
+  <!-- Fond avec ombre portée subtile -->
+  <rect width="{{W}}" height="{{H}}" fill="{{BG}}" rx="8" filter="url(#cardshadow)"/>
+
+  <!-- Bandeau supérieur dégradé (arrondi en haut uniquement) -->
+  <rect x="0" y="0" width="{{W}}" height="16" fill="url(#band)" rx="8"/>
+  <rect x="0" y="8"  width="{{W}}" height="8"  fill="url(#band)"/>
+
+  <!-- Bordure fine -->
+  <rect width="{{W}}" height="{{H}}" fill="none"
+        stroke="#E0E0F0" stroke-width="1" rx="8"/>
+
+  <!-- Code QR -->
+  {{QR_IMAGE}}
+
+  <!-- Barre de séparation verticale dégradée -->
+  <rect x="{{AX}}" y="{{AY}}" width="{{AW}}" height="{{AH}}"
+        fill="url(#bargrad)" rx="1.5" opacity="0.9"/>
+
+  <!-- Nom — grand, gras -->
+  <text x="{{TX}}" y="{{TY0}}" text-anchor="{{TA}}"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="14" font-weight="bold" fill="{{FG}}">{{F0:Votre Nom}}</text>
+
+  <!-- Titre en couleur principale -->
+  <text x="{{TX}}" y="{{TY1}}" text-anchor="{{TA}}"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="10" fill="{{C0:#6C63FF}}">{{F1:Titre / Poste}}</text>
+
+  <!-- Ligne de séparation courte sous le titre -->
+  <line x1="{{TX}}" y1="{{TY1}}" x2="{{TX}}" y2="{{TY1}}"
+        stroke="{{C0:#6C63FF}}" stroke-width="0" opacity="0"/>
+
+  <text x="{{TX}}" y="{{TY2}}" text-anchor="{{TA}}"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="9" fill="{{FG}}" opacity="0.65">{{F2:Téléphone}}</text>
+
+  <text x="{{TX}}" y="{{TY3}}" text-anchor="{{TA}}"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="9" fill="{{FG}}" opacity="0.65">{{F3:Email}}</text>
+
+  <text x="{{TX}}" y="{{TY4}}" text-anchor="{{TA}}"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="9" fill="{{C0:#6C63FF}}" opacity="0.85">{{F4:Site web}}</text>
+
+</svg>
