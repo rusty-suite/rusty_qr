@@ -359,21 +359,26 @@ pub fn calc_qr_sz(config: &CardConfig, w: u32, h: u32) -> u32 {
         CardLayout::Label        => (w as f32 * 0.58) as u32,
         CardLayout::Badge        => (h as f32 * 0.75) as u32,
         CardLayout::Flyer        => (w as f32 * 0.40) as u32,
+        CardLayout::Square       => (w as f32 * 0.70) as u32,
+        CardLayout::Poster       => (w as f32 * 0.45) as u32,
+        CardLayout::Ticket       => (h as f32 * 0.78) as u32,
     }
 }
 
 pub fn calc_qr_x(config: &CardConfig, w: u32, h: u32, qr_sz: u32) -> u32 {
     match config.layout {
         CardLayout::BusinessCard | CardLayout::Badge => (h as f32 * 0.09) as u32,
-        _ => (w - qr_sz) / 2,
+        CardLayout::Ticket                           => (h as f32 * 0.08) as u32,
+        _                                            => (w - qr_sz) / 2,
     }
 }
 
 pub fn calc_qr_y(config: &CardConfig, h: u32, qr_sz: u32) -> u32 {
     match config.layout {
-        CardLayout::BusinessCard              => (h as f32 * 0.09) as u32,
-        CardLayout::Label | CardLayout::Flyer => (h as f32 * 0.06) as u32,
-        CardLayout::Badge                     => (h - qr_sz) / 2,
+        CardLayout::BusinessCard => (h as f32 * 0.09) as u32,
+        CardLayout::Label | CardLayout::Flyer | CardLayout::Square | CardLayout::Poster
+            => (h as f32 * 0.06) as u32,
+        CardLayout::Badge | CardLayout::Ticket => (h - qr_sz) / 2,
     }
 }
 
@@ -403,6 +408,21 @@ fn calc_text_geometry(
             let ty0 = qr_y + qr_sz + 18;
             (tx, "middle", [ty0, ty0+24, ty0+41, ty0+55, ty0+69])
         }
+        CardLayout::Square => {
+            let tx  = w / 2;
+            let ty0 = qr_y + qr_sz + 12;
+            (tx, "middle", [ty0, ty0+18, ty0+31, ty0+43, ty0+55])
+        }
+        CardLayout::Poster => {
+            let tx  = w / 2;
+            let ty0 = qr_y + qr_sz + 20;
+            (tx, "middle", [ty0, ty0+30, ty0+49, ty0+65, ty0+80])
+        }
+        CardLayout::Ticket => {
+            let tx  = qr_x + qr_sz + 14;
+            let ty0 = (h as f32 * 0.32) as u32;
+            (tx, "start", [ty0, ty0+18, ty0+30, ty0+41, ty0+51])
+        }
     }
 }
 
@@ -416,7 +436,9 @@ fn calc_accent_rect(
     match config.layout {
         CardLayout::BusinessCard => (tx as i32 - 6, qr_y, 3, qr_sz),
         CardLayout::Badge        => (0, 0, w, 12),
-        _                        => (0, 0, 0, 0),
+        CardLayout::Poster       => (0, 0, w, 14),
+        CardLayout::Ticket       => (0, 0, w,  8),
+        _                        => (0, 0, 0,  0),
     }
 }
 
@@ -472,9 +494,9 @@ fn build_accent_block(config: &CardConfig, w: u32, h: u32, qr_x: u32, qr_y: u32,
             let bar_x = tx as i32 - 6;
             format!("  <rect x=\"{bar_x}\" y=\"{qr_y}\" width=\"3\" height=\"{qr_sz}\" fill=\"{acc}\" rx=\"1\"/>")
         }
-        CardLayout::Badge => {
-            format!("  <rect x=\"0\" y=\"0\" width=\"{w}\" height=\"12\" fill=\"{acc}\"/>")
-        }
+        CardLayout::Badge   => format!("  <rect x=\"0\" y=\"0\" width=\"{w}\" height=\"12\" fill=\"{acc}\"/>"),
+        CardLayout::Poster  => format!("  <rect x=\"0\" y=\"0\" width=\"{w}\" height=\"14\" fill=\"{acc}\"/>"),
+        CardLayout::Ticket  => format!("  <rect x=\"0\" y=\"0\" width=\"{w}\" height=\"8\"  fill=\"{acc}\"/>"),
         _ => String::new(),
     }
 }
@@ -490,6 +512,9 @@ fn build_text_block(config: &CardConfig, w: u32, h: u32, qr_x: u32, qr_y: u32, q
         CardLayout::Label        => &[(13,false),(9,false),(9,false),(9,false),(9,false)],
         CardLayout::Badge        => &[(16,true),(10,false),(8,false),(8,false),(8,false)],
         CardLayout::Flyer        => &[(18,true),(12,true),(10,false),(10,false),(10,false)],
+        CardLayout::Square       => &[(13,true),(10,false),(9,false),(9,false),(9,false)],
+        CardLayout::Poster       => &[(22,true),(14,true),(11,false),(10,false),(10,false)],
+        CardLayout::Ticket       => &[(13,true),(9,false),(8,false),(8,false),(8,false)],
     };
 
     for (i, field) in config.fields.iter().enumerate() {

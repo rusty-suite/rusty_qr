@@ -44,8 +44,15 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
             .show_ui(ui, |ui| {
                 for &lay in CardLayout::ALL {
                     if ui.selectable_label(card.layout == lay, lay.label()).clicked() {
-                        let old_fields = card.fields.clone();
+                        // Preserve user-set colors and carry over field values
+                        let old_fields  = card.fields.clone();
+                        let old_bg      = card.bg_color;
+                        let old_text    = card.text_color;
+                        let old_accent  = card.accent_color;
                         *card = crate::card::CardConfig::new(lay);
+                        card.bg_color     = old_bg;
+                        card.text_color   = old_text;
+                        card.accent_color = old_accent;
                         for (i, f) in old_fields.iter().enumerate() {
                             if let Some(dst) = card.fields.get_mut(i) {
                                 if dst.is_empty() { *dst = f.clone(); }
@@ -452,15 +459,20 @@ fn show_egui_preview(app: &RustyQrApp, ui: &mut Ui) {
         CardLayout::Label        => dw * 0.58,
         CardLayout::Badge        => dh * 0.75,
         CardLayout::Flyer        => dw * 0.40,
+        CardLayout::Square       => dw * 0.70,
+        CardLayout::Poster       => dw * 0.45,
+        CardLayout::Ticket       => dh * 0.78,
     };
     let qr_x = rect.left() + match app.card.layout {
         CardLayout::BusinessCard | CardLayout::Badge => dh * 0.09,
-        _ => (dw - qr_sz) / 2.0,
+        CardLayout::Ticket                           => dh * 0.08,
+        _                                            => (dw - qr_sz) / 2.0,
     };
     let qr_y = rect.top() + match app.card.layout {
-        CardLayout::BusinessCard              => dh * 0.09,
-        CardLayout::Label | CardLayout::Flyer => dh * 0.06,
-        CardLayout::Badge                     => (dh - qr_sz) / 2.0,
+        CardLayout::BusinessCard => dh * 0.09,
+        CardLayout::Label | CardLayout::Flyer | CardLayout::Square | CardLayout::Poster
+            => dh * 0.06,
+        CardLayout::Badge | CardLayout::Ticket => (dh - qr_sz) / 2.0,
     };
     let qr_rect = egui::Rect::from_min_size(egui::pos2(qr_x, qr_y), egui::vec2(qr_sz, qr_sz));
 
@@ -474,16 +486,29 @@ fn show_egui_preview(app: &RustyQrApp, ui: &mut Ui) {
             "QR", egui::FontId::proportional(12.0), egui::Color32::from_gray(100));
     }
 
-    if app.card.layout == CardLayout::BusinessCard {
-        let bar_x = qr_x + qr_sz + dh * 0.04;
-        painter.rect_filled(
-            egui::Rect::from_min_size(egui::pos2(bar_x, qr_y), egui::vec2(2.0, qr_sz)),
-            1.0, acc);
-    }
-    if app.card.layout == CardLayout::Badge {
-        painter.rect_filled(
-            egui::Rect::from_min_size(rect.left_top(), egui::vec2(dw, 8.0)),
-            0.0, acc);
+    match app.card.layout {
+        CardLayout::BusinessCard => {
+            let bar_x = qr_x + qr_sz + dh * 0.04;
+            painter.rect_filled(
+                egui::Rect::from_min_size(egui::pos2(bar_x, qr_y), egui::vec2(2.0, qr_sz)),
+                1.0, acc);
+        }
+        CardLayout::Badge => {
+            painter.rect_filled(
+                egui::Rect::from_min_size(rect.left_top(), egui::vec2(dw, 8.0)),
+                0.0, acc);
+        }
+        CardLayout::Poster => {
+            painter.rect_filled(
+                egui::Rect::from_min_size(rect.left_top(), egui::vec2(dw, 10.0)),
+                0.0, acc);
+        }
+        CardLayout::Ticket => {
+            painter.rect_filled(
+                egui::Rect::from_min_size(rect.left_top(), egui::vec2(dw, 5.0)),
+                0.0, acc);
+        }
+        _ => {}
     }
 
     // Determine which fields to show
@@ -497,12 +522,14 @@ fn show_egui_preview(app: &RustyQrApp, ui: &mut Ui) {
     let text_x = match app.card.layout {
         CardLayout::BusinessCard => qr_x + qr_sz + dh * 0.07,
         CardLayout::Badge        => qr_x + qr_sz + 10.0,
-        _ => rect.left() + dw / 2.0 - 60.0,
+        CardLayout::Ticket       => qr_x + qr_sz + 12.0,
+        _                        => rect.left() + dw / 2.0 - 60.0,
     };
     let mut ty = match app.card.layout {
-        CardLayout::BusinessCard              => qr_y + 6.0,
-        CardLayout::Badge                     => rect.top() + dh * 0.28,
-        CardLayout::Label | CardLayout::Flyer => qr_y + qr_sz + 10.0,
+        CardLayout::BusinessCard => qr_y + 6.0,
+        CardLayout::Badge        => rect.top() + dh * 0.28,
+        CardLayout::Ticket       => rect.top() + dh * 0.30,
+        _                        => qr_y + qr_sz + 10.0, // Label, Flyer, Square, Poster
     };
 
     for (i, (field, visible)) in preview_fields.iter().enumerate() {
@@ -513,18 +540,26 @@ fn show_egui_preview(app: &RustyQrApp, ui: &mut Ui) {
             field.to_string()
         };
         let (fs, color) = match (app.card.layout, i) {
-            (CardLayout::BusinessCard, 0) | (CardLayout::Badge, 0) | (CardLayout::Flyer, 0) => (14.0, fg_col),
+            (CardLayout::BusinessCard, 0)
+            | (CardLayout::Badge, 0)
+            | (CardLayout::Flyer, 0)
+            | (CardLayout::Square, 0)
+            | (CardLayout::Ticket, 0) => (14.0, fg_col),
+            (CardLayout::Poster, 0) => (18.0, fg_col),
+            (CardLayout::Poster, 1) => (12.0, acc),
             (_, 1) => (10.0, acc),
             _ => (9.0, fg_col),
         };
         let alpha = if field.is_empty() { 80u8 } else { 220u8 };
         let col   = egui::Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), alpha);
         let anchor = match app.card.layout {
-            CardLayout::Label | CardLayout::Flyer => egui::Align2::CENTER_TOP,
+            CardLayout::Label | CardLayout::Flyer
+            | CardLayout::Square | CardLayout::Poster => egui::Align2::CENTER_TOP,
             _ => egui::Align2::LEFT_TOP,
         };
         let tx = match app.card.layout {
-            CardLayout::Label | CardLayout::Flyer => rect.center().x,
+            CardLayout::Label | CardLayout::Flyer
+            | CardLayout::Square | CardLayout::Poster => rect.center().x,
             _ => text_x,
         };
         painter.text(egui::pos2(tx, ty), anchor, &display, egui::FontId::proportional(fs), col);

@@ -126,24 +126,6 @@ Si vous souhaitez positionner le texte vous-même, utilisez :
 2. Dans RustyQR → **Concepteur de cartes**, cliquez sur **📁 Charger un fichier SVG**.
 3. Sélectionnez votre fichier — il devient immédiatement actif pour l'export SVG.
 
-### Partager votre thème via GitHub
-
-Pour que votre thème apparaisse dans la liste **🌐 GitHub** de RustyQR :
-
-1. Forkez le dépôt `rusty-suite/rusty_qr`.
-2. Placez votre fichier SVG dans le dossier `templates/`.
-3. Ajoutez une entrée dans `templates/index.json` :
-
-```json
-{
-  "id": "mon_theme",
-  "name": "Mon Thème",
-  "description": "Description courte de votre thème",
-  "file": "mon_theme.svg"
-}
-```
-
-4. Ouvrez une Pull Request — après fusion, votre thème sera accessible à tous les utilisateurs.
 
 ### Gabarits et dimensions de canvas
 
