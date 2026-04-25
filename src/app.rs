@@ -129,7 +129,9 @@ impl eframe::App for RustyQrApp {
         // ── Modal "À propos" ─────────────────────────────────────────────────
         if self.show_about {
             egui::Window::new("À propos de RustyQR")
-                .collapsible(false).resizable(false).auto_sized()
+                .collapsible(false)
+                .resizable(false)
+                .fixed_size([360.0, 340.0])
                 .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
                 .show(ctx, |ui| {
                     ui.add_space(8.0);
