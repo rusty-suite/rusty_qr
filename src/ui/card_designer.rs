@@ -138,6 +138,32 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
             }
         }
 
+        // ── Couleurs du thème (slots Cx) ─────────────────────────────────────
+        if !app.template_color_data.is_empty() {
+            ui.add_space(10.0);
+            ui.separator();
+            ui.add_space(8.0);
+            ui.label(egui::RichText::new("Couleurs du thème").strong());
+            ui.add_space(4.0);
+            theme::hint(ui, "Couleurs supplémentaires définies par le thème SVG.");
+            ui.add_space(4.0);
+
+            let color_count = app.template_color_data.len();
+            egui::Grid::new("tpl_colors")
+                .num_columns(2)
+                .spacing([8.0, 6.0])
+                .show(ui, |ui| {
+                    for i in 0..color_count {
+                        let label = app.template_color_data[i].label.clone();
+                        ui.label(egui::RichText::new(&label).small());
+                        if color_edit(ui, &mut app.template_color_data[i].value) {
+                            changed = true;
+                        }
+                        ui.end_row();
+                    }
+                });
+        }
+
         ui.add_space(10.0);
         ui.separator();
         ui.add_space(8.0);
@@ -322,12 +348,11 @@ fn show_template_selector(app: &mut RustyQrApp, ui: &mut Ui) -> bool {
     changed
 }
 
-/// Apply a template selection: update index, detect fields, mark preview dirty.
+/// Apply a template selection: update index, detect fields + colors, mark preview dirty.
 fn apply_template(app: &mut RustyQrApp, idx: usize) {
     app.selected_template_idx = idx;
     app.template_preview_dirty = true;
 
-    // Detect {{Fx}} fields in the selected template
     let svg_opt: Option<String> = {
         let n  = builtin_count();
         let ci = custom_idx();
@@ -344,19 +369,35 @@ fn apply_template(app: &mut RustyQrApp, idx: usize) {
         }
     };
 
-    if let Some(svg) = svg_opt {
-        let labels = app.card.layout.field_labels();
-        let detected = template::detect_fields(&svg, labels);
-        // Preserve existing values for matching vars
-        let old = std::mem::replace(&mut app.template_field_data, detected);
+    if let Some(svg) = &svg_opt {
+        // Apply suggested palette (BG/FG/AC) if present in template
+        let (bg, fg, ac) = template::detect_palette_defaults(svg);
+        if let Some(c) = bg { app.card.bg_color     = c; }
+        if let Some(c) = fg { app.card.text_color   = c; }
+        if let Some(c) = ac { app.card.accent_color = c; }
+
+        // Detect {{Fx}} text fields
+        let labels   = app.card.layout.field_labels();
+        let detected = template::detect_fields(svg, labels);
+        let old_f    = std::mem::replace(&mut app.template_field_data, detected);
         for tf in &mut app.template_field_data {
-            if let Some(prev) = old.iter().find(|o| o.var == tf.var) {
+            if let Some(prev) = old_f.iter().find(|o| o.var == tf.var) {
                 tf.value   = prev.value.clone();
                 tf.visible = prev.visible;
             }
         }
+
+        // Detect {{Cx:#hex|label}} color slots
+        let detected_c = template::detect_colors(svg);
+        let old_c      = std::mem::replace(&mut app.template_color_data, detected_c);
+        for tc in &mut app.template_color_data {
+            if let Some(prev) = old_c.iter().find(|o| o.var == tc.var) {
+                tc.value = prev.value;
+            }
+        }
     } else if idx == 0 {
         app.template_field_data.clear();
+        app.template_color_data.clear();
         app.template_preview_texture = None;
     }
 }
@@ -505,8 +546,11 @@ fn export_card_svg(app: &mut RustyQrApp) {
     let profile    = app.current_profile().clone();
 
     let svg = match get_active_template_svg(app) {
-        Some(tpl) => template::render(tpl, &app.card, matrix_ref, &profile, &app.template_field_data),
-        None      => to_svg(&app.card, matrix_ref, &profile),
+        Some(tpl) => template::render(
+            tpl, &app.card, matrix_ref, &profile,
+            &app.template_field_data, &app.template_color_data,
+        ),
+        None => to_svg(&app.card, matrix_ref, &profile),
     };
 
     let p = path.to_string_lossy().into_owned();

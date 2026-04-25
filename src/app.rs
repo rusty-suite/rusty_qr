@@ -5,7 +5,7 @@ use crate::export::ExportFormat;
 use crate::history::{LibraryEntry, load_library};
 use crate::qr::types::QrForm;
 use crate::style::profile::{StyleProfile, load_profiles, save_profiles};
-use crate::template::{RemoteTemplate, TemplateField};
+use crate::template::{RemoteTemplate, TemplateColor, TemplateField};
 use crate::ui;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -57,6 +57,7 @@ pub struct RustyQrApp {
     pub selected_template_idx: usize,
     pub custom_template_svg: Option<String>,
     pub template_field_data: Vec<TemplateField>,
+    pub template_color_data: Vec<TemplateColor>,
     pub template_preview_texture: Option<TextureHandle>,
     pub template_preview_dirty: bool,
     pub remote_templates: Vec<RemoteTemplate>,
@@ -92,6 +93,7 @@ impl RustyQrApp {
             selected_template_idx: 0,
             custom_template_svg: None,
             template_field_data: Vec::new(),
+            template_color_data: Vec::new(),
             template_preview_texture: None,
             template_preview_dirty: false,
             remote_templates: Vec::new(),
@@ -180,7 +182,8 @@ impl eframe::App for RustyQrApp {
                 };
                 if let Some(svg_str) = tpl_svg {
                     let preview_svg = crate::template::render_preview(
-                        &svg_str, &self.card, &self.template_field_data,
+                        &svg_str, &self.card,
+                        &self.template_field_data, &self.template_color_data,
                     );
                     if let Some((rgba, w, h)) = crate::template::svg_to_rgba(&preview_svg, 400, 320) {
                         let img = egui::ColorImage::from_rgba_unmultiplied(

@@ -2,18 +2,23 @@
 //!
 //! ## Template variable reference
 //!
-//! | Variable         | Content                                           |
-//! |------------------|---------------------------------------------------|
-//! | `{{W}}` `{{H}}`  | Canvas width / height in pixels                   |
-//! | `{{BG}}` `{{FG}}` `{{AC}}` | Colors (#RRGGBB)                       |
-//! | `{{QR_X}}` `{{QR_Y}}` `{{QR_SZ}}` | QR position + size              |
-//! | `{{TX}}` `{{TA}}` | Text X / text-anchor ("start" or "middle")        |
-//! | `{{TY0}}`..`{{TY4}}` | Pre-computed Y for each text line              |
-//! | `{{AX}}` `{{AY}}` `{{AW}}` `{{AH}}` | Accent rect geometry          |
-//! | `{{QR_IMAGE}}`   | Complete `<image>` element (or placeholder rect)  |
-//! | `{{ACCENT_BLOCK}}` | Layout-specific accent decoration               |
-//! | `{{TEXT_BLOCK}}` | All `<text>` elements (standard layout)           |
-//! | `{{F0:default}}`..`{{F4:default}}` | Text field with fallback text |
+//! | Variable                           | Content                                           |
+//! |------------------------------------|---------------------------------------------------|
+//! | `{{W}}` `{{H}}`                   | Canvas width / height in pixels                   |
+//! | `{{BG}}` `{{FG}}` `{{AC}}`        | Colors (#RRGGBB) — driven by app color pickers    |
+//! | `{{QR_X}}` `{{QR_Y}}` `{{QR_SZ}}` | QR position + size                               |
+//! | `{{TX}}` `{{TA}}`                 | Text X / text-anchor ("start" or "middle")        |
+//! | `{{TY0}}`..`{{TY4}}`              | Pre-computed Y for each text line                 |
+//! | `{{AX}}` `{{AY}}` `{{AW}}` `{{AH}}` | Accent rect geometry                          |
+//! | `{{QR_IMAGE}}`                    | Complete `<image>` element (or placeholder rect)  |
+//! | `{{ACCENT_BLOCK}}`                | Layout-specific accent decoration                 |
+//! | `{{TEXT_BLOCK}}`                  | All `<text>` elements (standard layout)           |
+//! | `{{F0:default}}`..`{{F4:default}}` | Text field with fallback text                   |
+//! | `{{C0:#RRGGBB\|Label}}`..`{{C4:...}}` | Extra color slot — shows a color picker in UI |
+//!
+//! ## Template metadata (in SVG comment)
+//! Add `<!-- @palette BG=#rrggbb FG=#rrggbb AC=#rrggbb -->` to suggest default
+//! colors; the app applies them automatically when the template is selected.
 
 use std::collections::HashMap;
 use image::ImageEncoder;
@@ -53,6 +58,21 @@ pub const BUILTIN: &[BuiltinTemplate] = &[
         description: "Liseré coloré, style accréditation / badge",
         svg: include_str!("../templates/badge.svg"),
     },
+    BuiltinTemplate {
+        id: "modern", name: "Épuré Pro",
+        description: "Bandeau dégradé, coins arrondis, palette personnalisable",
+        svg: include_str!("../templates/modern.svg"),
+    },
+    BuiltinTemplate {
+        id: "neon", name: "Néon",
+        description: "Fond sombre, bordure et texte lumineux style néon",
+        svg: include_str!("../templates/neon.svg"),
+    },
+    BuiltinTemplate {
+        id: "gradient", name: "Dégradé",
+        description: "Panneau gauche en dégradé, zone texte claire à droite",
+        svg: include_str!("../templates/gradient.svg"),
+    },
 ];
 
 // ─── Remote template descriptor ───────────────────────────────────────────────
@@ -77,6 +97,64 @@ pub struct TemplateField {
     pub default: String,   // default text from template syntax `{{F0:default}}`
     pub value:   String,   // current user value
     pub visible: bool,
+}
+
+// ─── Template color ───────────────────────────────────────────────────────────
+
+/// One `{{Cx:#RRGGBB|Label}}` color slot detected in a template.
+#[derive(Clone)]
+pub struct TemplateColor {
+    pub var:     String,   // "C0", "C1", …
+    pub label:   String,   // display label (from `|Label` part, or auto)
+    #[allow(dead_code)]
+    pub default: [u8; 3], // color from template syntax (for future "reset" feature)
+    pub value:   [u8; 3], // current user-picked color
+}
+
+/// Parse `<!-- @palette BG=#rrggbb FG=#rrggbb AC=#rrggbb -->` from template.
+/// Returns (bg, fg, ac) defaults, any of which may be `None` if absent.
+pub fn detect_palette_defaults(template: &str)
+    -> (Option<[u8;3]>, Option<[u8;3]>, Option<[u8;3]>)
+{
+    let Some(line) = template.lines().find(|l| l.contains("@palette")) else {
+        return (None, None, None);
+    };
+    fn ph(line: &str, key: &str) -> Option<[u8;3]> {
+        let kw = format!("{key}=#");
+        let pos = line.find(&kw)?;
+        let s = &line[pos + kw.len()..];
+        if s.len() < 6 { return None; }
+        Some([
+            u8::from_str_radix(&s[0..2], 16).ok()?,
+            u8::from_str_radix(&s[2..4], 16).ok()?,
+            u8::from_str_radix(&s[4..6], 16).ok()?,
+        ])
+    }
+    (ph(line, "BG"), ph(line, "FG"), ph(line, "AC"))
+}
+
+/// Scan template for `{{C0:#RRGGBB|Label}}`..`{{C4:...}}` color slots.
+pub fn detect_colors(template: &str) -> Vec<TemplateColor> {
+    (0..5usize).filter_map(|i| {
+        let prefix = format!("{{{{C{i}:#");
+        let pos = template.find(&prefix)?;
+        let rest = &template[pos + prefix.len()..];
+        let end  = rest.find("}}")?;
+        let inner = &rest[..end]; // e.g. "6C63FF|Couleur principale"
+        let (hex_str, label) = if let Some(pipe) = inner.find('|') {
+            (&inner[..pipe], inner[pipe+1..].to_string())
+        } else {
+            (inner, format!("Couleur C{i}"))
+        };
+        if hex_str.len() < 6 { return None; }
+        let r = u8::from_str_radix(&hex_str[0..2], 16).ok()?;
+        let g = u8::from_str_radix(&hex_str[2..4], 16).ok()?;
+        let b = u8::from_str_radix(&hex_str[4..6], 16).ok()?;
+        Some(TemplateColor {
+            var: format!("C{i}"), label,
+            default: [r, g, b], value: [r, g, b],
+        })
+    }).collect()
 }
 
 /// Scan `template` for `{{F0}}`..`{{F4}}` (and `{{F0:default}}`) placeholders.
@@ -114,21 +192,45 @@ pub fn render(
     matrix:   Option<&QrMatrix>,
     profile:  &StyleProfile,
     fields:   &[TemplateField],
+    colors:   &[TemplateColor],
 ) -> String {
-    let pre  = preprocess_defaults(template, fields);
+    let t1   = preprocess_colors(template, colors);
+    let t2   = preprocess_defaults(&t1, fields);
     let vars = build_vars(config, matrix, profile, fields, false);
-    substitute(&pre, &vars)
+    substitute(&t2, &vars)
 }
 
 /// Like `render()` but uses a placeholder rect instead of the QR PNG — fast,
 /// suitable for live preview (no PNG encoding).
-pub fn render_preview(template: &str, config: &CardConfig, fields: &[TemplateField]) -> String {
-    let pre  = preprocess_defaults(template, fields);
+pub fn render_preview(
+    template: &str,
+    config:   &CardConfig,
+    fields:   &[TemplateField],
+    colors:   &[TemplateColor],
+) -> String {
+    let t1   = preprocess_colors(template, colors);
+    let t2   = preprocess_defaults(&t1, fields);
     let vars = build_vars(config, None, &StyleProfile::default(), fields, true);
-    substitute(&pre, &vars)
+    substitute(&t2, &vars)
 }
 
 // ─── Variable substitution ────────────────────────────────────────────────────
+
+/// Replace `{{Cx:#hex|label}}` patterns with the current color value.
+fn preprocess_colors(template: &str, colors: &[TemplateColor]) -> String {
+    let mut out = template.to_string();
+    for color in colors {
+        let prefix = format!("{{{{{}:#", color.var);
+        loop {
+            let Some(start) = out.find(&prefix) else { break };
+            let after = &out[start + prefix.len()..];
+            let Some(end) = after.find("}}") else { break };
+            let full = format!("{prefix}{}}}}}",  &after[..end]);
+            out = out.replacen(&full, &hex(color.value), 1);
+        }
+    }
+    out
+}
 
 /// Replace `{{F0:default text}}` patterns BEFORE regular substitution.
 /// Rules:
