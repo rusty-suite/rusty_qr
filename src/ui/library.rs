@@ -7,7 +7,7 @@ use crate::theme;
 
 pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
     ui.add_space(8.0);
-    theme::title(ui, "📚 Bibliothèque");
+    theme::title(ui, "\u{1F4DA} Biblioth\u{E8}que");
     theme::hint(ui, "Vos configurations QR enregistrées — cliquez pour recharger et modifier.");
     ui.separator();
     ui.add_space(8.0);
@@ -17,7 +17,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
             ui.add_space(40.0);
             ui.label(egui::RichText::new("Aucune entrée enregistrée.").weak());
             ui.add_space(8.0);
-            theme::hint(ui, "Depuis l'onglet « Créer QR », utilisez\n« 💾 Enregistrer dans la bibliothèque ».");
+            theme::hint(ui, "Depuis l'onglet \u{AB} Cr\u{E9}er QR \u{BB}, utilisez\n\u{AB} \u{1F4BE} Enregistrer dans la biblioth\u{E8}que \u{BB}.");
         });
         return;
     }
@@ -73,7 +73,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
                             // Delete
                             if ui.add(
                                 egui::Button::new(
-                                    egui::RichText::new("🗑").color(egui::Color32::from_rgb(200, 80, 80))
+                                    egui::RichText::new("\u{1F5D1}").color(egui::Color32::from_rgb(200, 80, 80))
                                 ).frame(false)
                             ).on_hover_text("Supprimer").clicked() {
                                 to_delete = Some(entry.id);
