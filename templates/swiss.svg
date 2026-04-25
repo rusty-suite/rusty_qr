@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  RustyQR Theme: Design Suisse
+  Style typographique international — grille rigoureuse, rouge vif,
+  typographie sans-serif neutre, espace blanc abondant.
+
+  @palette BG=#FFFFFF FG=#111111 AC=#D32F2F
+
+  Variables: {{W}} {{H}} {{BG}} {{FG}} {{AC}} {{QR_IMAGE}}
+             {{TX}} {{TA}} {{TY0}}..{{TY4}} {{AX}} {{AY}} {{AW}} {{AH}}
+             {{F0:default}}..{{F4:default}}
+             {{C0:#D32F2F|Rouge suisse}} {{C1:#111111|Noir}}
+-->
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="{{W}}" height="{{H}}" viewBox="0 0 {{W}} {{H}}">
+
+  <!-- Fond blanc pur -->
+  <rect width="{{W}}" height="{{H}}" fill="{{BG}}"/>
+
+  <!-- Barre rouge inférieure pleine largeur (signature Swiss style) -->
+  <rect x="0" y="{{H}}" width="{{W}}" height="8" fill="{{C0:#D32F2F}}" transform="translate(0,-8)"/>
+
+  <!-- Bande rouge supérieure mince -->
+  <rect x="0" y="0" width="{{W}}" height="4" fill="{{C0:#D32F2F}}"/>
+
+  <!-- Filet horizontal de grille à mi-hauteur (séparateur discret) -->
+  <line x1="0" y1="50%" x2="{{W}}" y2="50%"
+        stroke="{{C1:#111111}}" stroke-width="0.3" opacity="0.08"/>
+
+  <!-- Code QR -->
+  {{QR_IMAGE}}
+
+  <!-- Barre de séparation verticale noir (remplace l'accent) -->
+  <rect x="{{AX}}" y="{{AY}}" width="{{AW}}" height="{{AH}}"
+        fill="{{C1:#111111}}"/>
+
+  <!-- Bloc rouge derrière le nom (fond coloré) -->
+  <rect x="{{TX}}" y="{{TY0}}" width="96" height="18"
+        fill="{{C0:#D32F2F}}" transform="translate(-2,-14)"/>
+
+  <!-- Nom — blanc sur fond rouge -->
+  <text x="{{TX}}" y="{{TY0}}" text-anchor="{{TA}}"
+        font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+        font-size="13" font-weight="bold" letter-spacing="0.5"
+        fill="#FFFFFF">{{F0:PRÉNOM NOM}}</text>
+
+  <!-- Titre — noir avec espacement -->
+  <text x="{{TX}}" y="{{TY1}}" text-anchor="{{TA}}"
+        font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+        font-size="9" letter-spacing="1.5" fill="{{C1:#111111}}" opacity="0.65">{{F1:TITRE / POSTE}}</text>
+
+  <!-- Filet court sous le titre -->
+  <line x1="{{TX}}" y1="{{TY1}}" x2="{{TX}}" y2="{{TY1}}"
+        stroke="{{C0:#D32F2F}}" stroke-width="0"/>
+
+  <text x="{{TX}}" y="{{TY2}}" text-anchor="{{TA}}"
+        font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+        font-size="9" fill="{{C1:#111111}}" opacity="0.55">{{F2:Téléphone}}</text>
+
+  <text x="{{TX}}" y="{{TY3}}" text-anchor="{{TA}}"
+        font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+        font-size="9" fill="{{C1:#111111}}" opacity="0.55">{{F3:Email}}</text>
+
+  <text x="{{TX}}" y="{{TY4}}" text-anchor="{{TA}}"
+        font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+        font-size="9" fill="{{C0:#D32F2F}}" opacity="0.85">{{F4:Site web}}</text>
+
+</svg>

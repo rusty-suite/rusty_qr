@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  RustyQR Theme: Art Déco
+  Élégance des années 20 : fond sombre riche, ornements géométriques dorés,
+  lignes chevrons et losanges, typographie espacée.
+
+  @palette BG=#12100A FG=#F5E6C0 AC=#D4AF37
+
+  Variables: {{W}} {{H}} {{BG}} {{FG}} {{AC}} {{QR_IMAGE}}
+             {{TX}} {{TA}} {{TY0}}..{{TY4}} {{AX}} {{AY}} {{AW}} {{AH}}
+             {{F0:default}}..{{F4:default}}
+             {{C0:#D4AF37|Or Art Déco}} {{C1:#B8962E|Or foncé}} {{C2:#F5E6C0|Ivoire}}
+-->
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="{{W}}" height="{{H}}" viewBox="0 0 {{W}} {{H}}">
+
+  <defs>
+    <!-- Fond sombre riche -->
+    <linearGradient id="darkbg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#1C170E"/>
+      <stop offset="100%" stop-color="#0A0804"/>
+    </linearGradient>
+    <!-- Dégradé or pour ornements -->
+    <linearGradient id="goldgrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#F0D060"/>
+      <stop offset="50%"  stop-color="{{C0:#D4AF37}}"/>
+      <stop offset="100%" stop-color="{{C1:#B8962E}}"/>
+    </linearGradient>
+    <!-- Halo or derrière QR -->
+    <radialGradient id="goldglow" cx="35%" cy="50%" r="35%">
+      <stop offset="0%"   stop-color="{{C0:#D4AF37}}" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="{{C0:#D4AF37}}" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Fond sombre -->
+  <rect width="{{W}}" height="{{H}}" fill="url(#darkbg)"/>
+  <rect width="{{W}}" height="{{H}}" fill="url(#goldglow)"/>
+
+  <!-- Cadre or extérieur double -->
+  <rect x="3" y="3" width="{{W}}" height="{{H}}"
+        fill="none" stroke="url(#goldgrad)" stroke-width="1.5"
+        transform="translate(-3,-3)"/>
+  <rect x="7" y="7" width="{{W}}" height="{{H}}"
+        fill="none" stroke="{{C0:#D4AF37}}" stroke-width="0.5" opacity="0.40"
+        transform="translate(-7,-7)"/>
+
+  <!-- Bandes horizontales or haut (chevrons) -->
+  <line x1="0"   y1="14" x2="{{W}}" y2="14" stroke="{{C0:#D4AF37}}" stroke-width="0.6" opacity="0.35"/>
+  <line x1="0"   y1="17" x2="{{W}}" y2="17" stroke="{{C0:#D4AF37}}" stroke-width="0.6" opacity="0.20"/>
+
+  <!-- Bandes horizontales or bas -->
+  <line x1="0" y1="{{H}}" x2="{{W}}" y2="{{H}}"
+        stroke="{{C0:#D4AF37}}" stroke-width="0.6" opacity="0.35"
+        transform="translate(0,-14)"/>
+  <line x1="0" y1="{{H}}" x2="{{W}}" y2="{{H}}"
+        stroke="{{C0:#D4AF37}}" stroke-width="0.6" opacity="0.20"
+        transform="translate(0,-17)"/>
+
+  <!-- Losange Art Déco en coin haut-gauche -->
+  <polygon points="14,4  18,8  14,12  10,8"
+           fill="url(#goldgrad)" opacity="0.80"/>
+  <!-- Losange en coin haut-droite -->
+  <polygon points="{{W}},4  {{W}},4  {{W}},4  {{W}},4"
+           fill="url(#goldgrad)" opacity="0.80"
+           transform="translate(-14,4)"/>
+
+  <!-- Code QR avec halo subtil -->
+  {{QR_IMAGE}}
+
+  <!-- Barre de séparation dorée dégradée -->
+  <rect x="{{AX}}" y="{{AY}}" width="{{AW}}" height="{{AH}}"
+        fill="url(#goldgrad)" opacity="0.90"/>
+
+  <!-- Chevrons décoratifs entre la barre et le texte -->
+  <text x="{{TX}}" y="{{TY0}}" text-anchor="{{TA}}"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="7" fill="{{C0:#D4AF37}}" opacity="0.60" letter-spacing="3"
+        transform="translate(0,-12)">◆ ◇ ◆</text>
+
+  <!-- Nom — ivoire, espacé -->
+  <text x="{{TX}}" y="{{TY0}}" text-anchor="{{TA}}"
+        font-family="'Palatino Linotype', Palatino, Georgia, serif"
+        font-size="13" font-weight="bold" letter-spacing="1.2"
+        fill="{{C2:#F5E6C0}}">{{F0:PRÉNOM NOM}}</text>
+
+  <!-- Filet or court -->
+  <line x1="{{TX}}" y1="{{TY1}}" x2="{{TX}}" y2="{{TY1}}"
+        stroke="{{C0:#D4AF37}}" stroke-width="0" transform="translate(0,-2)"/>
+
+  <text x="{{TX}}" y="{{TY1}}" text-anchor="{{TA}}"
+        font-family="'Palatino Linotype', Palatino, Georgia, serif"
+        font-size="9" fill="{{C0:#D4AF37}}" letter-spacing="2.0">{{F1:Titre / Poste}}</text>
+
+  <text x="{{TX}}" y="{{TY2}}" text-anchor="{{TA}}"
+        font-family="'Palatino Linotype', Palatino, Georgia, serif"
+        font-size="9" fill="{{C2:#F5E6C0}}" opacity="0.55">{{F2:Téléphone}}</text>
+
+  <text x="{{TX}}" y="{{TY3}}" text-anchor="{{TA}}"
+        font-family="'Palatino Linotype', Palatino, Georgia, serif"
+        font-size="9" fill="{{C2:#F5E6C0}}" opacity="0.55">{{F3:Email}}</text>
+
+  <text x="{{TX}}" y="{{TY4}}" text-anchor="{{TA}}"
+        font-family="'Palatino Linotype', Palatino, Georgia, serif"
+        font-size="9" fill="{{C0:#D4AF37}}" opacity="0.80">{{F4:Site web}}</text>
+
+</svg>

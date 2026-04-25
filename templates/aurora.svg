@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  RustyQR Theme: Aurore Boréale
+  Ciel nocturne profond avec nappes aurores en dégradé violet–turquoise.
+  Étoiles ponctuelles et halo ambiant autour du QR.
+
+  @palette BG=#050818 FG=#D8EEF8 AC=#3DDBD9
+
+  Variables: {{W}} {{H}} {{BG}} {{FG}} {{AC}} {{QR_IMAGE}}
+             {{TX}} {{TA}} {{TY0}}..{{TY4}} {{AX}} {{AY}} {{AW}} {{AH}}
+             {{F0:default}}..{{F4:default}}
+             {{C0:#3DDBD9|Turquoise}} {{C1:#7B2FBE|Violet}} {{C2:#00B4D8|Bleu}}
+-->
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="{{W}}" height="{{H}}" viewBox="0 0 {{W}} {{H}}">
+
+  <defs>
+    <!-- Ciel nuit dégradé vertical -->
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#020510"/>
+      <stop offset="60%"  stop-color="#050818"/>
+      <stop offset="100%" stop-color="#080C20"/>
+    </linearGradient>
+    <!-- Nappe aurore 1 (violet → transparent) -->
+    <linearGradient id="aurora1" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%"   stop-color="{{C1:#7B2FBE}}" stop-opacity="0.55"/>
+      <stop offset="50%"  stop-color="{{C0:#3DDBD9}}" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="{{C1:#7B2FBE}}" stop-opacity="0"/>
+    </linearGradient>
+    <!-- Nappe aurore 2 (turquoise–bleu) -->
+    <linearGradient id="aurora2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="{{C0:#3DDBD9}}" stop-opacity="0.30"/>
+      <stop offset="60%"  stop-color="{{C2:#00B4D8}}" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="{{C0:#3DDBD9}}" stop-opacity="0"/>
+    </linearGradient>
+    <!-- Halo doux autour QR -->
+    <radialGradient id="qrhalo" cx="35%" cy="50%" r="40%">
+      <stop offset="0%"   stop-color="{{C0:#3DDBD9}}" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="{{C0:#3DDBD9}}" stop-opacity="0"/>
+    </radialGradient>
+    <!-- Lueur sur le texte -->
+    <filter id="glow" x="-15%" y="-15%" width="130%" height="130%">
+      <feGaussianBlur stdDeviation="1.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Ciel nuit -->
+  <rect width="{{W}}" height="{{H}}" fill="url(#sky)"/>
+
+  <!-- Nappes aurores -->
+  <rect width="{{W}}" height="{{H}}" fill="url(#aurora1)" opacity="0.9"/>
+  <rect width="{{W}}" height="{{H}}" fill="url(#aurora2)" opacity="0.8"/>
+
+  <!-- Étoiles (cercles minuscules) -->
+  <circle cx="12%"  cy="8%"  r="0.7" fill="#FFFFFF" opacity="0.75"/>
+  <circle cx="28%"  cy="5%"  r="0.9" fill="#FFFFFF" opacity="0.60"/>
+  <circle cx="45%"  cy="12%" r="0.6" fill="#D8EEF8" opacity="0.70"/>
+  <circle cx="62%"  cy="6%"  r="0.8" fill="#FFFFFF" opacity="0.80"/>
+  <circle cx="75%"  cy="10%" r="0.6" fill="#D8EEF8" opacity="0.65"/>
+  <circle cx="88%"  cy="4%"  r="0.9" fill="#FFFFFF" opacity="0.55"/>
+  <circle cx="92%"  cy="18%" r="0.7" fill="#3DDBD9" opacity="0.50"/>
+  <circle cx="18%"  cy="20%" r="0.5" fill="#FFFFFF" opacity="0.45"/>
+  <circle cx="55%"  cy="20%" r="0.7" fill="#FFFFFF" opacity="0.40"/>
+
+  <!-- Halo QR -->
+  <rect width="{{W}}" height="{{H}}" fill="url(#qrhalo)"/>
+
+  <!-- Code QR -->
+  {{QR_IMAGE}}
+
+  <!-- Ligne aurora décorative entre QR et texte -->
+  <rect x="{{AX}}" y="{{AY}}" width="{{AW}}" height="{{AH}}"
+        fill="{{C0:#3DDBD9}}" opacity="0.70" filter="url(#glow)"/>
+
+  <!-- Texte -->
+  <text x="{{TX}}" y="{{TY0}}" text-anchor="{{TA}}"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="14" font-weight="bold"
+        fill="{{FG}}" filter="url(#glow)">{{F0:Votre Nom}}</text>
+
+  <text x="{{TX}}" y="{{TY1}}" text-anchor="{{TA}}"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="10" fill="{{C0:#3DDBD9}}" opacity="0.90">{{F1:Titre / Poste}}</text>
+
+  <text x="{{TX}}" y="{{TY2}}" text-anchor="{{TA}}"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="9" fill="{{FG}}" opacity="0.60">{{F2:Téléphone}}</text>
+
+  <text x="{{TX}}" y="{{TY3}}" text-anchor="{{TA}}"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="9" fill="{{FG}}" opacity="0.60">{{F3:Email}}</text>
+
+  <text x="{{TX}}" y="{{TY4}}" text-anchor="{{TA}}"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="9" fill="{{C2:#00B4D8}}" opacity="0.85">{{F4:Site web}}</text>
+
+</svg>

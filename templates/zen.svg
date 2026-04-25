@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  RustyQR Theme: Zen / Sumi-e
+  Esthétique japonaise épurée : papier washi crème, pinceau encre,
+  sceau rouge (hanko) et équilibre asymétrique.
+
+  @palette BG=#F8F5EE FG=#1A1208 AC=#C0392B
+
+  Variables: {{W}} {{H}} {{BG}} {{FG}} {{AC}} {{QR_IMAGE}}
+             {{TX}} {{TA}} {{TY0}}..{{TY4}} {{AX}} {{AY}} {{AW}} {{AH}}
+             {{F0:default}}..{{F4:default}}
+             {{C0:#C0392B|Rouge hanko}} {{C1:#1A1208|Encre}}
+-->
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="{{W}}" height="{{H}}" viewBox="0 0 {{W}} {{H}}">
+
+  <defs>
+    <!-- Ton de papier washi légèrement inégal -->
+    <linearGradient id="washi" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#FDFBF4"/>
+      <stop offset="100%" stop-color="#F0EBE0"/>
+    </linearGradient>
+    <!-- Ombre légère côté gauche -->
+    <linearGradient id="sidelight" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#1A1208" stop-opacity="0.05"/>
+      <stop offset="20%"  stop-color="#1A1208" stop-opacity="0"/>
+    </linearGradient>
+    <!-- Filtre: sceau légèrement flou -->
+    <filter id="hankoblur" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="0.6"/>
+    </filter>
+  </defs>
+
+  <!-- Fond washi -->
+  <rect width="{{W}}" height="{{H}}" fill="url(#washi)"/>
+  <rect width="{{W}}" height="{{H}}" fill="url(#sidelight)"/>
+
+  <!-- Trait de pinceau horizontal (Sumi-e) — ligne encre imparfaite -->
+  <path d="M 0 {{H}} Q {{W}},{{H}} {{W}},{{H}}"
+        fill="none" stroke="{{C1:#1A1208}}" stroke-width="1.5"
+        opacity="0.12" transform="translate(0,-{{H}}) scale(1,0.05)"/>
+
+  <!-- Ligne encre épaisse sous le QR (coup de pinceau) -->
+  <rect x="0" y="{{H}}" width="{{W}}" height="3"
+        fill="{{C1:#1A1208}}" opacity="0.18" transform="translate(0,-18)"/>
+  <!-- Variante pinceau: trait irrégulier (chemin) -->
+  <path d="M 8 {{H}} C 30,{{H}} 60,{{H}} 90,{{H}} S 150,{{H}} {{W}},{{H}}"
+        fill="none" stroke="{{C1:#1A1208}}" stroke-width="2.5"
+        stroke-linecap="round" opacity="0.15"
+        transform="translate(0,-14)"/>
+
+  <!-- Code QR -->
+  {{QR_IMAGE}}
+
+  <!-- Sceau circulaire rouge (hanko) — positionné en bas à gauche du QR -->
+  <circle cx="26" cy="{{H}}" r="14" fill="{{C0:#C0392B}}" opacity="0.85"
+          filter="url(#hankoblur)" transform="translate(0,-26)"/>
+  <circle cx="26" cy="{{H}}" r="14" fill="none"
+          stroke="#FFFFFF" stroke-width="1.5" opacity="0.40"
+          transform="translate(0,-26)"/>
+  <!-- Caractère central du sceau (☯ en substitution de kanji) -->
+  <text x="26" y="{{H}}" text-anchor="middle" dominant-baseline="middle"
+        font-family="serif" font-size="10" font-weight="bold"
+        fill="#FFFFFF" opacity="0.90" transform="translate(0,-26)">禅</text>
+
+  <!-- Barre de séparation encre -->
+  <rect x="{{AX}}" y="{{AY}}" width="{{AW}}" height="{{AH}}"
+        fill="{{C1:#1A1208}}" opacity="0.20"/>
+
+  <!-- Texte — sobre, encre noire -->
+  <text x="{{TX}}" y="{{TY0}}" text-anchor="{{TA}}"
+        font-family="Georgia, 'Times New Roman', serif"
+        font-size="14" font-weight="bold"
+        fill="{{FG}}" letter-spacing="0.3">{{F0:Votre Nom}}</text>
+
+  <!-- Trait court rouge sous le nom -->
+  <line x1="{{TX}}" y1="{{TY0}}" x2="{{TX}}" y2="{{TY0}}"
+        stroke="{{C0:#C0392B}}" stroke-width="0"/>
+
+  <text x="{{TX}}" y="{{TY1}}" text-anchor="{{TA}}"
+        font-family="Georgia, 'Times New Roman', serif"
+        font-size="9" fill="{{C0:#C0392B}}" letter-spacing="1.0">{{F1:Titre / Poste}}</text>
+
+  <text x="{{TX}}" y="{{TY2}}" text-anchor="{{TA}}"
+        font-family="Georgia, 'Times New Roman', serif"
+        font-size="9" fill="{{FG}}" opacity="0.55">{{F2:Téléphone}}</text>
+
+  <text x="{{TX}}" y="{{TY3}}" text-anchor="{{TA}}"
+        font-family="Georgia, 'Times New Roman', serif"
+        font-size="9" fill="{{FG}}" opacity="0.55">{{F3:Email}}</text>
+
+  <text x="{{TX}}" y="{{TY4}}" text-anchor="{{TA}}"
+        font-family="Georgia, 'Times New Roman', serif"
+        font-size="9" fill="{{C1:#1A1208}}" opacity="0.45">{{F4:Site web}}</text>
+
+</svg>
