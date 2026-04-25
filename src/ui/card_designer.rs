@@ -173,7 +173,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
         ui.add_space(4.0);
 
         if app.qr_matrix.is_none() {
-            theme::status_warn(ui, "⚠ Générez d'abord un QR dans l'onglet Créer.");
+            theme::status_warn(ui, "\u{26A0} G\u{E9}n\u{E9}rez d'abord un QR dans l'onglet Cr\u{E9}er.");
         }
 
         ui.horizontal(|ui| {
@@ -316,7 +316,7 @@ fn show_template_selector(app: &mut RustyQrApp, ui: &mut Ui) -> bool {
                         changed = true;
                     }
                     Err(e) => {
-                        app.card_export_status = Some((false, format!("✗ Lecture : {e}")));
+                        app.card_export_status = Some((false, format!("\u{2717} Lecture : {e}")));
                     }
                 }
             }
@@ -556,8 +556,8 @@ fn export_card_svg(app: &mut RustyQrApp) {
 
     let p = path.to_string_lossy().into_owned();
     app.card_export_status = Some(match std::fs::write(&p, svg) {
-        Ok(_)  => (true,  format!("✓ SVG exporté : {p}")),
-        Err(e) => (false, format!("✗ {e}")),
+        Ok(_)  => (true,  format!("\u{2713} SVG export\u{E9} : {p}")),
+        Err(e) => (false, format!("\u{2717} {e}")),
     });
 }
 
