@@ -5,6 +5,7 @@ mod history;
 mod logo;
 mod qr;
 mod style;
+mod template;
 mod theme;
 mod ui;
 

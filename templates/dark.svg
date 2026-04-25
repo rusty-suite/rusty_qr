@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Thème : Sombre
+  Le fond est contrôlé par {{BG}} — recommandez #1A1A2E ou similaire.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+     width="{{W}}" height="{{H}}" viewBox="0 0 {{W}} {{H}}">
+
+  <defs>
+    <!-- Halo d'accent centré -->
+    <radialGradient id="glow_dark" cx="50%" cy="50%" r="70%">
+      <stop offset="0%"   stop-color="{{AC}}" stop-opacity="0.10"/>
+      <stop offset="100%" stop-color="{{AC}}" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Fond sombre -->
+  <rect width="{{W}}" height="{{H}}" fill="{{BG}}"/>
+
+  <!-- Halo subtil -->
+  <rect width="{{W}}" height="{{H}}" fill="url(#glow_dark)"/>
+
+  <!-- Bordure colorée fine -->
+  <rect width="{{W}}" height="{{H}}" fill="none"
+        stroke="{{AC}}" stroke-width="1" rx="4" opacity="0.4"/>
+
+  <!-- Code QR -->
+  {{QR_IMAGE}}
+
+  <!-- Accent -->
+  {{ACCENT_BLOCK}}
+
+  <!-- Texte -->
+  {{TEXT_BLOCK}}
+
+</svg>
