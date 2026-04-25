@@ -71,7 +71,8 @@ pub struct RustyQrApp {
 }
 
 impl RustyQrApp {
-    pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
+    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+        setup_fonts(&cc.egui_ctx);
         Self {
             tab: Tab::Creator,
             form: QrForm::default(),
@@ -365,5 +366,44 @@ fn row(ui: &mut egui::Ui, label: &str, value: &str) {
 fn nav_btn(ui: &mut egui::Ui, current: &mut Tab, target: Tab, label: &str) {
     if ui.selectable_label(*current == target, label).clicked() {
         *current = target;
+    }
+}
+
+/// Charge une police système avec une couverture étendue des symboles Unicode
+/// (Dingbats, flèches, symboles divers) comme police de repli après la police
+/// par défaut d'egui. Si aucune police n'est trouvée, le comportement est inchangé.
+fn setup_fonts(ctx: &egui::Context) {
+    // Candidats par ordre de priorité (Windows, macOS, Linux)
+    let candidates: &[&str] = &[
+        "C:/Windows/Fonts/seguisym.ttf",                          // Windows — Segoe UI Symbol
+        "C:/Windows/Fonts/segoeui.ttf",                           // Windows — Segoe UI (fallback)
+        "/System/Library/Fonts/Supplemental/Symbola.ttf",         // macOS
+        "/System/Library/Fonts/Geneva.ttf",                       // macOS fallback
+        "/usr/share/fonts/truetype/unifont/unifont.ttf",          // Linux — unifont (très complet)
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",        // Linux fallback
+    ];
+
+    let mut fonts = egui::FontDefinitions::default();
+    let mut loaded = false;
+
+    for path in candidates {
+        if let Ok(data) = std::fs::read(path) {
+            fonts.font_data.insert(
+                "SymbolFallback".to_owned(),
+                egui::FontData::from_owned(data),
+            );
+            // Ajout en fin de liste = utilisé uniquement si le glyphe est absent
+            // des polices précédentes (Ubuntu-Light, Hack).
+            fonts.families
+                .entry(egui::FontFamily::Proportional)
+                .or_default()
+                .push("SymbolFallback".to_owned());
+            loaded = true;
+            break;
+        }
+    }
+
+    if loaded {
+        ctx.set_fonts(fonts);
     }
 }

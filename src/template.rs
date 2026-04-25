@@ -431,10 +431,10 @@ fn build_qr_image(
     let Some(matrix) = matrix else {
         return qr_placeholder(qr_x, qr_y, qr_sz);
     };
-    let mut tmp = profile.clone();
-    tmp.module_px  = (qr_sz as usize / (matrix.len() + tmp.quiet_zone as usize * 2 + 1)).max(1) as u32;
-    tmp.quiet_zone = 2;
-    let img = renderer::render_ec(matrix, &tmp, ec);
+    // Render with the profile exactly as configured so the result is
+    // pixel-identical to the sidebar preview. The SVG <image> element
+    // scales it to qr_sz, preserving relative logo size and padding.
+    let img = renderer::render_ec(matrix, profile, ec);
     let mut png: Vec<u8> = Vec::new();
     let enc = image::codecs::png::PngEncoder::new(&mut png);
     let _ = enc.write_image(img.as_raw(), img.width(), img.height(), image::ColorType::Rgba8);
