@@ -1,15 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Thème : Sombre
-  Le fond est contrôlé par {{BG}} — recommandez #1A1A2E ou similaire.
+  RustyQR Theme: Sombre
+  Fond sombre avec halo radial en couleur d'accent et texte clair.
+  Recommandé: BG = #1A1A2E, FG = #E8E8E8, AC = #50D250
+
+  Variables: {{W}} {{H}} {{BG}} {{FG}} {{AC}} {{QR_IMAGE}}
+             {{TX}} {{TA}} {{TY0}}..{{TY4}} {{AX}} {{AY}} {{AW}} {{AH}}
+             {{F0:default}}..{{F4:default}}
 -->
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+<svg xmlns="http://www.w3.org/2000/svg"
      width="{{W}}" height="{{H}}" viewBox="0 0 {{W}} {{H}}">
 
   <defs>
-    <!-- Halo d'accent centré -->
-    <radialGradient id="glow_dark" cx="50%" cy="50%" r="70%">
-      <stop offset="0%"   stop-color="{{AC}}" stop-opacity="0.10"/>
+    <radialGradient id="glow" cx="50%" cy="50%" r="70%">
+      <stop offset="0%"   stop-color="{{AC}}" stop-opacity="0.12"/>
       <stop offset="100%" stop-color="{{AC}}" stop-opacity="0"/>
     </radialGradient>
   </defs>
@@ -18,19 +22,38 @@
   <rect width="{{W}}" height="{{H}}" fill="{{BG}}"/>
 
   <!-- Halo subtil -->
-  <rect width="{{W}}" height="{{H}}" fill="url(#glow_dark)"/>
+  <rect width="{{W}}" height="{{H}}" fill="url(#glow)"/>
 
-  <!-- Bordure colorée fine -->
+  <!-- Bordure colorée translucide -->
   <rect width="{{W}}" height="{{H}}" fill="none"
-        stroke="{{AC}}" stroke-width="1" rx="4" opacity="0.4"/>
+        stroke="{{AC}}" stroke-width="1" rx="4" opacity="0.45"/>
 
   <!-- Code QR -->
   {{QR_IMAGE}}
 
-  <!-- Accent -->
-  {{ACCENT_BLOCK}}
+  <!-- Accent (barre ou bandeau selon le gabarit) -->
+  <rect x="{{AX}}" y="{{AY}}" width="{{AW}}" height="{{AH}}"
+        fill="{{AC}}" rx="1" opacity="0.85"/>
 
-  <!-- Texte -->
-  {{TEXT_BLOCK}}
+  <!-- Texte clair -->
+  <text x="{{TX}}" y="{{TY0}}" text-anchor="{{TA}}"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="14" font-weight="bold" fill="{{FG}}">{{F0:Votre Nom}}</text>
+
+  <text x="{{TX}}" y="{{TY1}}" text-anchor="{{TA}}"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="10" fill="{{AC}}">{{F1:Titre / Poste}}</text>
+
+  <text x="{{TX}}" y="{{TY2}}" text-anchor="{{TA}}"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="9" fill="{{FG}}" opacity="0.8">{{F2:Téléphone}}</text>
+
+  <text x="{{TX}}" y="{{TY3}}" text-anchor="{{TA}}"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="9" fill="{{FG}}" opacity="0.8">{{F3:Email}}</text>
+
+  <text x="{{TX}}" y="{{TY4}}" text-anchor="{{TA}}"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="9" fill="{{FG}}" opacity="0.8">{{F4:Site web}}</text>
 
 </svg>

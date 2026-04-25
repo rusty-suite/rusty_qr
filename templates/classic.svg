@@ -1,11 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Thème : Classique
-  Variables disponibles : {{W}} {{H}} {{BG}} {{FG}} {{AC}}
-                          {{QR_IMAGE}} {{ACCENT_BLOCK}} {{TEXT_BLOCK}}
-                          {{QR_X}} {{QR_Y}} {{QR_SZ}} {{F0}}..{{F4}}
+  RustyQR Theme: Classique
+  Fond blanc avec bordure fine, texte à droite du QR (carte de visite) ou centré (autres gabarits).
+
+  Variables disponibles:
+    {{W}} {{H}}         — dimensions du canvas
+    {{BG}} {{FG}} {{AC}} — couleurs de fond, texte, accent
+    {{QR_IMAGE}}         — code QR (image ou placeholder)
+    {{TX}} {{TA}}        — position X et ancre du texte
+    {{TY0}}..{{TY4}}    — positions Y des lignes de texte
+    {{AX}} {{AY}} {{AW}} {{AH}} — géométrie de la barre d'accent
+    {{F0:default}}..{{F4:default}} — champs de texte avec valeur par défaut
 -->
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+<svg xmlns="http://www.w3.org/2000/svg"
      width="{{W}}" height="{{H}}" viewBox="0 0 {{W}} {{H}}">
 
   <!-- Fond blanc avec coins arrondis -->
@@ -18,10 +25,29 @@
   <!-- Code QR -->
   {{QR_IMAGE}}
 
-  <!-- Élément d'accent (barre de séparation, bandeau…) -->
-  {{ACCENT_BLOCK}}
+  <!-- Barre d'accent verticale (carte de visite) ou bandeau (badge) -->
+  <rect x="{{AX}}" y="{{AY}}" width="{{AW}}" height="{{AH}}"
+        fill="{{AC}}" rx="1"/>
 
-  <!-- Champs texte -->
-  {{TEXT_BLOCK}}
+  <!-- Texte — utilise les valeurs de l'utilisateur ou les valeurs par défaut -->
+  <text x="{{TX}}" y="{{TY0}}" text-anchor="{{TA}}"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="14" font-weight="bold" fill="{{FG}}">{{F0:Votre Nom}}</text>
+
+  <text x="{{TX}}" y="{{TY1}}" text-anchor="{{TA}}"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="10" fill="{{AC}}">{{F1:Titre / Poste}}</text>
+
+  <text x="{{TX}}" y="{{TY2}}" text-anchor="{{TA}}"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="9" fill="{{FG}}">{{F2:Téléphone}}</text>
+
+  <text x="{{TX}}" y="{{TY3}}" text-anchor="{{TA}}"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="9" fill="{{FG}}">{{F3:Email}}</text>
+
+  <text x="{{TX}}" y="{{TY4}}" text-anchor="{{TA}}"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="9" fill="{{FG}}">{{F4:Site web}}</text>
 
 </svg>

@@ -1,25 +1,50 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Thème : Badge
-  Liseré vertical gauche en couleur d'accent.
-  Fonctionne avec tous les gabarits ; particulièrement adapté au Badge (90×60 mm).
+  RustyQR Theme: Badge
+  Liseré latéral gauche + bandeau haut/bas optionnel selon le gabarit.
+  Particulièrement adapté au gabarit "Badge (90×60 mm)".
+
+  Variables: {{W}} {{H}} {{BG}} {{FG}} {{AC}} {{QR_IMAGE}}
+             {{TX}} {{TA}} {{TY0}}..{{TY4}} {{AX}} {{AY}} {{AW}} {{AH}}
+             {{F0:default}}..{{F4:default}}
 -->
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+<svg xmlns="http://www.w3.org/2000/svg"
      width="{{W}}" height="{{H}}" viewBox="0 0 {{W}} {{H}}">
 
   <!-- Fond -->
   <rect width="{{W}}" height="{{H}}" fill="{{BG}}"/>
 
-  <!-- Liseré gauche coloré -->
+  <!-- Liseré gauche (toujours présent, quel que soit le gabarit) -->
   <rect x="0" y="0" width="5" height="{{H}}" fill="{{AC}}" opacity="0.85"/>
+
+  <!-- Accent spécifique au gabarit (bandeau haut pour Badge, barre pour Carte de visite) -->
+  <rect x="{{AX}}" y="{{AY}}" width="{{AW}}" height="{{AH}}"
+        fill="{{AC}}" rx="1"/>
 
   <!-- Code QR -->
   {{QR_IMAGE}}
 
-  <!-- Accent intégré (bandeau haut pour le gabarit Badge, barre pour Carte de visite) -->
-  {{ACCENT_BLOCK}}
+  <!-- Nom — grand, gras -->
+  <text x="{{TX}}" y="{{TY0}}" text-anchor="{{TA}}"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="15" font-weight="bold" fill="{{FG}}">{{F0:Prénom Nom}}</text>
 
-  <!-- Texte -->
-  {{TEXT_BLOCK}}
+  <!-- Titre / organisation en accent -->
+  <text x="{{TX}}" y="{{TY1}}" text-anchor="{{TA}}"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="10" fill="{{AC}}">{{F1:Organisation}}</text>
+
+  <!-- Identifiant / référence -->
+  <text x="{{TX}}" y="{{TY2}}" text-anchor="{{TA}}"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="9" fill="{{FG}}" opacity="0.8">{{F2:Identifiant / Zone}}</text>
+
+  <text x="{{TX}}" y="{{TY3}}" text-anchor="{{TA}}"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="9" fill="{{FG}}" opacity="0.7">{{F3:Email}}</text>
+
+  <text x="{{TX}}" y="{{TY4}}" text-anchor="{{TA}}"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="9" fill="{{FG}}" opacity="0.7">{{F4:Date / Validité}}</text>
 
 </svg>

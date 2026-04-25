@@ -1,9 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Thème : Minimal
-  Aucune décoration — fond uni, QR et texte seulement.
+  RustyQR Theme: Minimal
+  Fond uni, aucune décoration, typographie épurée.
+  Le premier champ est mis en avant avec la couleur d'accent.
+
+  Variables: {{W}} {{H}} {{BG}} {{FG}} {{AC}} {{QR_IMAGE}}
+             {{TX}} {{TA}} {{TY0}}..{{TY4}}
+             {{F0:default}}..{{F4:default}}
 -->
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+<svg xmlns="http://www.w3.org/2000/svg"
      width="{{W}}" height="{{H}}" viewBox="0 0 {{W}} {{H}}">
 
   <!-- Fond uni -->
@@ -12,7 +17,25 @@
   <!-- Code QR -->
   {{QR_IMAGE}}
 
-  <!-- Texte (sans accent) -->
-  {{TEXT_BLOCK}}
+  <!-- Texte : F0 en accent, le reste en couleur de texte principale -->
+  <text x="{{TX}}" y="{{TY0}}" text-anchor="{{TA}}"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="14" font-weight="bold" fill="{{AC}}">{{F0:Votre Nom}}</text>
+
+  <text x="{{TX}}" y="{{TY1}}" text-anchor="{{TA}}"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="10" fill="{{FG}}">{{F1:Titre / Poste}}</text>
+
+  <text x="{{TX}}" y="{{TY2}}" text-anchor="{{TA}}"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="9" fill="{{FG}}" opacity="0.75">{{F2:Téléphone}}</text>
+
+  <text x="{{TX}}" y="{{TY3}}" text-anchor="{{TA}}"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="9" fill="{{FG}}" opacity="0.75">{{F3:Email}}</text>
+
+  <text x="{{TX}}" y="{{TY4}}" text-anchor="{{TA}}"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="9" fill="{{FG}}" opacity="0.75">{{F4:Site web}}</text>
 
 </svg>
