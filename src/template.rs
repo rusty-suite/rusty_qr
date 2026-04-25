@@ -1,8 +1,19 @@
-//! SVG template engine for the card designer.
+//! SVG template engine — variable substitution, field detection, preview rendering.
 //!
-//! Templates are SVG files containing `{{VARIABLE}}` placeholders.
-//! Built-in templates are embedded at compile-time from the `templates/` folder.
-//! Remote templates are fetched from the project's GitHub repository.
+//! ## Template variable reference
+//!
+//! | Variable         | Content                                           |
+//! |------------------|---------------------------------------------------|
+//! | `{{W}}` `{{H}}`  | Canvas width / height in pixels                   |
+//! | `{{BG}}` `{{FG}}` `{{AC}}` | Colors (#RRGGBB)                       |
+//! | `{{QR_X}}` `{{QR_Y}}` `{{QR_SZ}}` | QR position + size              |
+//! | `{{TX}}` `{{TA}}` | Text X / text-anchor ("start" or "middle")        |
+//! | `{{TY0}}`..`{{TY4}}` | Pre-computed Y for each text line              |
+//! | `{{AX}}` `{{AY}}` `{{AW}}` `{{AH}}` | Accent rect geometry          |
+//! | `{{QR_IMAGE}}`   | Complete `<image>` element (or placeholder rect)  |
+//! | `{{ACCENT_BLOCK}}` | Layout-specific accent decoration               |
+//! | `{{TEXT_BLOCK}}` | All `<text>` elements (standard layout)           |
+//! | `{{F0:default}}`..`{{F4:default}}` | Text field with fallback text |
 
 use std::collections::HashMap;
 use image::ImageEncoder;
@@ -11,7 +22,7 @@ use crate::card::{CardConfig, CardLayout};
 use crate::qr::encoder::QrMatrix;
 use crate::style::{profile::StyleProfile, renderer};
 
-// ─── Built-in templates ───────────────────────────────────────────────────────
+// ─── Built-in templates (compiled-in) ────────────────────────────────────────
 
 pub struct BuiltinTemplate {
     #[allow(dead_code)]
@@ -24,22 +35,22 @@ pub struct BuiltinTemplate {
 pub const BUILTIN: &[BuiltinTemplate] = &[
     BuiltinTemplate {
         id: "classic", name: "Classique",
-        description: "Fond blanc avec bordure, mise en page professionnelle",
+        description: "Fond blanc avec bordure, texte organisé par le thème",
         svg: include_str!("../templates/classic.svg"),
     },
     BuiltinTemplate {
         id: "dark", name: "Sombre",
-        description: "Fond sombre avec halo d'accent et bordure colorée",
+        description: "Fond sombre, halo d'accent, texte clair",
         svg: include_str!("../templates/dark.svg"),
     },
     BuiltinTemplate {
         id: "minimal", name: "Minimal",
-        description: "Fond uni sans décoration, typographie épurée",
+        description: "Fond uni, aucune décoration, typographie épurée",
         svg: include_str!("../templates/minimal.svg"),
     },
     BuiltinTemplate {
         id: "badge", name: "Badge",
-        description: "Liseré latéral coloré, style badge / accréditation",
+        description: "Liseré coloré, style accréditation / badge",
         svg: include_str!("../templates/badge.svg"),
     },
 ];
@@ -53,45 +64,98 @@ pub struct RemoteTemplate {
     pub name:        String,
     pub description: String,
     pub file:        String,
-    pub svg:         Option<String>,   // None until downloaded
+    pub svg:         Option<String>,
+}
+
+// ─── Template field ───────────────────────────────────────────────────────────
+
+/// One `{{Fx}}` text zone detected in a template.
+#[derive(Clone)]
+pub struct TemplateField {
+    pub var:     String,   // "F0", "F1", …
+    pub label:   String,   // display label (from card layout)
+    pub default: String,   // default text from template syntax `{{F0:default}}`
+    pub value:   String,   // current user value
+    pub visible: bool,
+}
+
+/// Scan `template` for `{{F0}}`..`{{F4}}` (and `{{F0:default}}`) placeholders.
+pub fn detect_fields(template: &str, layout_labels: &[&str]) -> Vec<TemplateField> {
+    (0..5usize).filter_map(|i| {
+        let simple  = format!("{{{{F{i}}}}}");
+        let ext_pfx = format!("{{{{F{i}:");
+        if !template.contains(&simple) && !template.contains(&ext_pfx) {
+            return None;
+        }
+        let default = extract_default(template, i);
+        let label   = layout_labels.get(i).copied().unwrap_or("Champ").to_string();
+        Some(TemplateField { var: format!("F{i}"), label, default, value: String::new(), visible: true })
+    }).collect()
+}
+
+fn extract_default(template: &str, i: usize) -> String {
+    let prefix = format!("{{{{F{i}:");
+    if let Some(start) = template.find(&prefix) {
+        let rest = &template[start + prefix.len()..];
+        if let Some(end) = rest.find("}}") {
+            return rest[..end].to_string();
+        }
+    }
+    String::new()
 }
 
 // ─── Rendering ────────────────────────────────────────────────────────────────
 
-/// Substitute all `{{VAR}}` placeholders in `template` and return the final SVG.
+/// Render `template` with all variables substituted, including the real QR PNG.
+/// Use for file export.
 pub fn render(
-    template:  &str,
-    config:    &CardConfig,
-    matrix:    Option<&QrMatrix>,
-    profile:   &StyleProfile,
+    template: &str,
+    config:   &CardConfig,
+    matrix:   Option<&QrMatrix>,
+    profile:  &StyleProfile,
+    fields:   &[TemplateField],
 ) -> String {
-    let (w, h) = config.layout.canvas_px();
+    let pre  = preprocess_defaults(template, fields);
+    let vars = build_vars(config, matrix, profile, fields, false);
+    substitute(&pre, &vars)
+}
 
-    let qr_sz = calc_qr_sz(config, w, h);
-    let qr_x  = calc_qr_x(config, w, h, qr_sz);
-    let qr_y  = calc_qr_y(config, h, qr_sz);
+/// Like `render()` but uses a placeholder rect instead of the QR PNG — fast,
+/// suitable for live preview (no PNG encoding).
+pub fn render_preview(template: &str, config: &CardConfig, fields: &[TemplateField]) -> String {
+    let pre  = preprocess_defaults(template, fields);
+    let vars = build_vars(config, None, &StyleProfile::default(), fields, true);
+    substitute(&pre, &vars)
+}
 
-    let mut vars: HashMap<String, String> = HashMap::new();
-    vars.insert("W".into(),  w.to_string());
-    vars.insert("H".into(),  h.to_string());
-    vars.insert("BG".into(), hex(config.bg_color));
-    vars.insert("FG".into(), hex(config.text_color));
-    vars.insert("AC".into(), hex(config.accent_color));
-    vars.insert("QR_X".into(),  qr_x.to_string());
-    vars.insert("QR_Y".into(),  qr_y.to_string());
-    vars.insert("QR_SZ".into(), qr_sz.to_string());
-    vars.insert("QR_IMAGE".into(),     build_qr_image(matrix, profile, qr_x, qr_y, qr_sz));
-    vars.insert("ACCENT_BLOCK".into(), build_accent_block(config, w, h, qr_x, qr_y, qr_sz));
-    vars.insert("TEXT_BLOCK".into(),   build_text_block(config, w, h, qr_x, qr_y, qr_sz));
+// ─── Variable substitution ────────────────────────────────────────────────────
 
-    for (i, f) in config.fields.iter().enumerate() {
-        vars.insert(format!("F{i}"), xml_escape(f));
+/// Replace `{{F0:default text}}` patterns BEFORE regular substitution.
+/// Rules:
+/// - visible=false → empty string
+/// - visible=true, value non-empty → user value
+/// - visible=true, value empty → template default text
+fn preprocess_defaults(template: &str, fields: &[TemplateField]) -> String {
+    let mut out = template.to_string();
+    for i in 0..5usize {
+        let prefix = format!("{{{{F{i}:");
+        // Replace every occurrence of {{Fi:anything}}
+        loop {
+            let Some(start) = out.find(&prefix) else { break };
+            let after = &out[start + prefix.len()..];
+            let Some(end) = after.find("}}") else { break };
+            let def_text = after[..end].to_string();
+            let full     = format!("{prefix}{def_text}}}}}");
+            let field    = fields.iter().find(|f| f.var == format!("F{i}"));
+            let replacement = match field {
+                Some(f) if !f.visible       => String::new(),
+                Some(f) if !f.value.is_empty() => xml_escape(&f.value),
+                _                            => xml_escape(&def_text),
+            };
+            out = out.replacen(&full, &replacement, 1);
+        }
     }
-    for i in config.fields.len()..5 {
-        vars.insert(format!("F{i}"), String::new());
-    }
-
-    substitute(template, &vars)
+    out
 }
 
 fn substitute(template: &str, vars: &HashMap<String, String>) -> String {
@@ -102,9 +166,76 @@ fn substitute(template: &str, vars: &HashMap<String, String>) -> String {
     out
 }
 
+// ─── Build variable map ───────────────────────────────────────────────────────
+
+fn build_vars(
+    config:  &CardConfig,
+    matrix:  Option<&QrMatrix>,
+    profile: &StyleProfile,
+    fields:  &[TemplateField],
+    preview: bool,
+) -> HashMap<String, String> {
+    let (w, h) = config.layout.canvas_px();
+    let qr_sz  = calc_qr_sz(config, w, h);
+    let qr_x   = calc_qr_x(config, w, h, qr_sz);
+    let qr_y   = calc_qr_y(config, h, qr_sz);
+
+    // Text positioning per layout
+    let (tx, ta, tys) = calc_text_geometry(config, w, h, qr_x, qr_y, qr_sz);
+    // Accent rect
+    let (ax, ay, aw, ah) = calc_accent_rect(config, w, h, qr_x, qr_y, qr_sz, tx);
+
+    let mut vars: HashMap<String, String> = HashMap::new();
+    // Dimensions
+    vars.insert("W".into(), w.to_string());
+    vars.insert("H".into(), h.to_string());
+    // Colors
+    vars.insert("BG".into(), hex(config.bg_color));
+    vars.insert("FG".into(), hex(config.text_color));
+    vars.insert("AC".into(), hex(config.accent_color));
+    // QR geometry
+    vars.insert("QR_X".into(),  qr_x.to_string());
+    vars.insert("QR_Y".into(),  qr_y.to_string());
+    vars.insert("QR_SZ".into(), qr_sz.to_string());
+    // Text geometry
+    vars.insert("TX".into(), tx.to_string());
+    vars.insert("TA".into(), ta.to_string());
+    for (i, &ty) in tys.iter().enumerate() {
+        vars.insert(format!("TY{i}"), ty.to_string());
+    }
+    // Accent rect
+    vars.insert("AX".into(), ax.to_string());
+    vars.insert("AY".into(), ay.to_string());
+    vars.insert("AW".into(), aw.to_string());
+    vars.insert("AH".into(), ah.to_string());
+    // Pre-built blocks
+    vars.insert("QR_IMAGE".into(),
+        if preview { qr_placeholder(qr_x, qr_y, qr_sz) }
+        else       { build_qr_image(matrix, profile, qr_x, qr_y, qr_sz) });
+    vars.insert("ACCENT_BLOCK".into(), build_accent_block(config, w, h, qr_x, qr_y, qr_sz));
+    vars.insert("TEXT_BLOCK".into(),   build_text_block(config, w, h, qr_x, qr_y, qr_sz));
+    // Field vars for simple {{F0}} (after preprocess_defaults already handled {{F0:default}})
+    if fields.is_empty() {
+        for (i, f) in config.fields.iter().enumerate() {
+            vars.insert(format!("F{i}"), xml_escape(f));
+        }
+        for i in config.fields.len()..5 {
+            vars.insert(format!("F{i}"), String::new());
+        }
+    } else {
+        for tf in fields {
+            vars.insert(tf.var.clone(),
+                if !tf.visible { String::new() } else { xml_escape(&tf.value) });
+        }
+        for i in 0..5usize { vars.entry(format!("F{i}")).or_default(); }
+    }
+
+    vars
+}
+
 // ─── Geometry helpers ─────────────────────────────────────────────────────────
 
-fn calc_qr_sz(config: &CardConfig, w: u32, h: u32) -> u32 {
+pub fn calc_qr_sz(config: &CardConfig, w: u32, h: u32) -> u32 {
     match config.layout {
         CardLayout::BusinessCard => (h as f32 * 0.82) as u32,
         CardLayout::Label        => (w as f32 * 0.58) as u32,
@@ -113,22 +244,73 @@ fn calc_qr_sz(config: &CardConfig, w: u32, h: u32) -> u32 {
     }
 }
 
-fn calc_qr_x(config: &CardConfig, w: u32, h: u32, qr_sz: u32) -> u32 {
+pub fn calc_qr_x(config: &CardConfig, w: u32, h: u32, qr_sz: u32) -> u32 {
     match config.layout {
         CardLayout::BusinessCard | CardLayout::Badge => (h as f32 * 0.09) as u32,
         _ => (w - qr_sz) / 2,
     }
 }
 
-fn calc_qr_y(config: &CardConfig, h: u32, qr_sz: u32) -> u32 {
+pub fn calc_qr_y(config: &CardConfig, h: u32, qr_sz: u32) -> u32 {
     match config.layout {
-        CardLayout::BusinessCard        => (h as f32 * 0.09) as u32,
+        CardLayout::BusinessCard              => (h as f32 * 0.09) as u32,
         CardLayout::Label | CardLayout::Flyer => (h as f32 * 0.06) as u32,
-        CardLayout::Badge               => (h - qr_sz) / 2,
+        CardLayout::Badge                     => (h - qr_sz) / 2,
     }
 }
 
-// ─── Block builders ───────────────────────────────────────────────────────────
+fn calc_text_geometry(
+    config: &CardConfig,
+    w: u32, h: u32,
+    qr_x: u32, qr_y: u32, qr_sz: u32,
+) -> (u32, &'static str, [u32; 5]) {
+    match config.layout {
+        CardLayout::BusinessCard => {
+            let tx  = qr_x + qr_sz + (h as f32 * 0.07) as u32;
+            let ty0 = qr_y + 8;
+            (tx, "start", [ty0, ty0+20, ty0+35, ty0+48, ty0+61])
+        }
+        CardLayout::Label => {
+            let tx  = w / 2;
+            let ty0 = qr_y + qr_sz + 14;
+            (tx, "middle", [ty0, ty0+17, ty0+30, ty0+43, ty0+56])
+        }
+        CardLayout::Badge => {
+            let tx  = qr_x + qr_sz + 16;
+            let ty0 = (h as f32 * 0.32) as u32;
+            (tx, "start", [ty0, ty0+20, ty0+33, ty0+45, ty0+57])
+        }
+        CardLayout::Flyer => {
+            let tx  = w / 2;
+            let ty0 = qr_y + qr_sz + 18;
+            (tx, "middle", [ty0, ty0+24, ty0+41, ty0+55, ty0+69])
+        }
+    }
+}
+
+fn calc_accent_rect(
+    config: &CardConfig,
+    w: u32, _h: u32,
+    _qr_x: u32, qr_y: u32, qr_sz: u32,
+    tx: u32,
+) -> (i32, u32, u32, u32) {
+    // (ax, ay, aw, ah)
+    match config.layout {
+        CardLayout::BusinessCard => (tx as i32 - 6, qr_y, 3, qr_sz),
+        CardLayout::Badge        => (0, 0, w, 12),
+        _                        => (0, 0, 0, 0),
+    }
+}
+
+// ─── SVG block builders ───────────────────────────────────────────────────────
+
+fn qr_placeholder(qr_x: u32, qr_y: u32, qr_sz: u32) -> String {
+    let cx = qr_x + qr_sz / 2;
+    let cy = qr_y + qr_sz / 2;
+    format!(
+        "  <rect x=\"{qr_x}\" y=\"{qr_y}\" width=\"{qr_sz}\" height=\"{qr_sz}\" fill=\"#D0D0D0\" rx=\"4\"/>\n  <text x=\"{cx}\" y=\"{cy}\" text-anchor=\"middle\" dominant-baseline=\"middle\" fill=\"#888\" font-family=\"Arial,sans-serif\" font-size=\"14\">QR</text>"
+    )
+}
 
 fn build_qr_image(
     matrix:  Option<&QrMatrix>,
@@ -136,27 +318,19 @@ fn build_qr_image(
     qr_x: u32, qr_y: u32, qr_sz: u32,
 ) -> String {
     let Some(matrix) = matrix else {
-        return format!(
-            "  <rect x=\"{qr_x}\" y=\"{qr_y}\" width=\"{qr_sz}\" height=\"{qr_sz}\" fill=\"#CCCCCC\" rx=\"4\"/>\n  <text x=\"{}\" y=\"{}\" text-anchor=\"middle\" fill=\"#888\" font-size=\"12\">QR code</text>",
-            qr_x + qr_sz / 2,
-            qr_y + qr_sz / 2,
-        );
+        return qr_placeholder(qr_x, qr_y, qr_sz);
     };
-
     let mut tmp = profile.clone();
-    tmp.module_px   = (qr_sz as usize / (matrix.len() + tmp.quiet_zone as usize * 2 + 1)).max(1) as u32;
-    tmp.quiet_zone  = 2;
+    tmp.module_px  = (qr_sz as usize / (matrix.len() + tmp.quiet_zone as usize * 2 + 1)).max(1) as u32;
+    tmp.quiet_zone = 2;
     let img = renderer::render(matrix, &tmp);
-
-    let mut png_bytes: Vec<u8> = Vec::new();
-    let enc = image::codecs::png::PngEncoder::new(&mut png_bytes);
+    let mut png: Vec<u8> = Vec::new();
+    let enc = image::codecs::png::PngEncoder::new(&mut png);
     let _ = enc.write_image(img.as_raw(), img.width(), img.height(), image::ColorType::Rgba8);
-
     use base64::Engine;
-    let b64 = base64::engine::general_purpose::STANDARD.encode(&png_bytes);
-
+    let b64 = base64::engine::general_purpose::STANDARD.encode(&png);
     format!(
-        "  <image x=\"{qr_x}\" y=\"{qr_y}\" width=\"{qr_sz}\" height=\"{qr_sz}\"\n         xlink:href=\"data:image/png;base64,{b64}\"/>",
+        "  <image x=\"{qr_x}\" y=\"{qr_y}\" width=\"{qr_sz}\" height=\"{qr_sz}\" href=\"data:image/png;base64,{b64}\"/>"
     )
 }
 
@@ -164,8 +338,8 @@ fn build_accent_block(config: &CardConfig, w: u32, h: u32, qr_x: u32, qr_y: u32,
     let acc = hex(config.accent_color);
     match config.layout {
         CardLayout::BusinessCard => {
-            let text_x = qr_x + qr_sz + (h as f32 * 0.07) as u32;
-            let bar_x  = text_x as i32 - 6;
+            let tx    = qr_x + qr_sz + (h as f32 * 0.07) as u32;
+            let bar_x = tx as i32 - 6;
             format!("  <rect x=\"{bar_x}\" y=\"{qr_y}\" width=\"3\" height=\"{qr_sz}\" fill=\"{acc}\" rx=\"1\"/>")
         }
         CardLayout::Badge => {
@@ -179,92 +353,76 @@ fn build_text_block(config: &CardConfig, w: u32, h: u32, qr_x: u32, qr_y: u32, q
     let mut out = String::new();
     let fg  = hex(config.text_color);
     let acc = hex(config.accent_color);
-    let labels = config.layout.field_labels();
+    let (tx, ta, tys) = calc_text_geometry(config, w, h, qr_x, qr_y, qr_sz);
 
-    match config.layout {
-        CardLayout::BusinessCard => {
-            let text_x = (qr_x + qr_sz + (h as f32 * 0.07) as u32) as i32;
-            let text_w = w as i32 - text_x - (h as f32 * 0.06) as i32;
-            let mut ty = qr_y as i32 + 8;
-            for (i, field) in config.fields.iter().enumerate() {
-                if field.is_empty() { continue; }
-                let (fs, color, bold) = match i {
-                    0 => (15, fg.as_str(), true),
-                    1 => (10, acc.as_str(), false),
-                    _ => (9,  fg.as_str(), false),
-                };
-                let icon   = match i { 2 => "☎ ", 3 => "✉ ", 4 => "🌐 ", _ => "" };
-                let weight = if bold { "bold" } else { "normal" };
-                let _ = labels.get(i); // suppress unused
-                out.push_str(&format!(
-                    "  <text x=\"{text_x}\" y=\"{ty}\" font-family=\"Arial,sans-serif\" \
-                     font-size=\"{fs}\" font-weight=\"{weight}\" fill=\"{color}\" \
-                     textLength=\"{text_w}\" lengthAdjust=\"spacingAndGlyphs\">{icon}{}</text>\n",
-                    xml_escape(field),
-                ));
-                ty += fs + 5;
-            }
-        }
+    let font_sizes: &[(usize, bool)] = match config.layout {
+        CardLayout::BusinessCard => &[(14,true),(10,false),(9,false),(9,false),(9,false)],
+        CardLayout::Label        => &[(13,false),(9,false),(9,false),(9,false),(9,false)],
+        CardLayout::Badge        => &[(16,true),(10,false),(8,false),(8,false),(8,false)],
+        CardLayout::Flyer        => &[(18,true),(12,true),(10,false),(10,false),(10,false)],
+    };
 
-        CardLayout::Label => {
-            let cx    = (w / 2) as i32;
-            let mut ty = (qr_y + qr_sz + 10) as i32;
-            for (i, field) in config.fields.iter().enumerate() {
-                if field.is_empty() { continue; }
-                let (fs, color) = if i == 0 { (13, acc.as_str()) } else { (9, fg.as_str()) };
-                out.push_str(&format!(
-                    "  <text x=\"{cx}\" y=\"{ty}\" text-anchor=\"middle\" \
-                     font-family=\"Arial,sans-serif\" font-size=\"{fs}\" fill=\"{color}\">{}</text>\n",
-                    xml_escape(field),
-                ));
-                ty += fs + 4;
-            }
-        }
+    for (i, field) in config.fields.iter().enumerate() {
+        if field.is_empty() { continue; }
+        let &(fs, bold) = font_sizes.get(i).unwrap_or(&(9, false));
+        let color  = if i == 1 { acc.as_str() } else { fg.as_str() };
+        let weight = if bold { "bold" } else { "normal" };
+        let ty     = tys[i.min(4)];
+        out.push_str(&format!(
+            "  <text x=\"{tx}\" y=\"{ty}\" text-anchor=\"{ta}\" dominant-baseline=\"auto\" \
+             font-family=\"Arial,sans-serif\" font-size=\"{fs}\" font-weight=\"{weight}\" \
+             fill=\"{color}\">{}</text>\n",
+            xml_escape(field),
+        ));
+    }
+    out
+}
 
-        CardLayout::Badge => {
-            let text_x = (qr_x + qr_sz + 16) as i32;
-            let text_w = w as i32 - text_x - 10;
-            let mut ty = (h as f32 * 0.32) as i32;
-            for (i, field) in config.fields.iter().enumerate() {
-                if field.is_empty() { continue; }
-                let (fs, color, bold) = match i {
-                    0 => (16, fg.as_str(), true),
-                    1 => (10, acc.as_str(), false),
-                    _ => (8,  fg.as_str(), false),
-                };
-                let weight = if bold { "bold" } else { "normal" };
-                out.push_str(&format!(
-                    "  <text x=\"{text_x}\" y=\"{ty}\" font-family=\"Arial,sans-serif\" \
-                     font-size=\"{fs}\" font-weight=\"{weight}\" fill=\"{color}\" \
-                     textLength=\"{text_w}\" lengthAdjust=\"spacingAndGlyphs\">{}</text>\n",
-                    xml_escape(field),
-                ));
-                ty += fs + 6;
-            }
-        }
+// ─── SVG → RGBA via resvg (for egui preview texture) ─────────────────────────
 
-        CardLayout::Flyer => {
-            let cx    = (w / 2) as i32;
-            let mut ty = (qr_y + qr_sz + 14) as i32;
-            for (i, field) in config.fields.iter().enumerate() {
-                if field.is_empty() { continue; }
-                let (fs, color, bold) = match i {
-                    0 => (18, acc.as_str(), true),
-                    1 => (12, fg.as_str(), true),
-                    _ => (10, fg.as_str(), false),
-                };
-                let weight = if bold { "bold" } else { "normal" };
-                out.push_str(&format!(
-                    "  <text x=\"{cx}\" y=\"{ty}\" text-anchor=\"middle\" \
-                     font-family=\"Arial,sans-serif\" font-size=\"{fs}\" font-weight=\"{weight}\" \
-                     fill=\"{color}\">{}</text>\n",
-                    xml_escape(field),
-                ));
-                ty += fs + 5;
-            }
+/// Rasterize an SVG string to straight-alpha RGBA bytes, scaled to fit within
+/// `max_w × max_h`. Returns `(rgba, width, height)` or `None` on error.
+pub fn svg_to_rgba(svg_str: &str, max_w: u32, max_h: u32) -> Option<(Vec<u8>, u32, u32)> {
+    use resvg::usvg;
+    let mut opts = usvg::Options::default();
+    // Load system fonts so <text> elements render correctly
+    opts.fontdb_mut().load_system_fonts();
+
+    let tree = usvg::Tree::from_str(svg_str, &opts).ok()?;
+    let sz   = tree.size();
+    let sw   = sz.width();
+    let sh   = sz.height();
+    if sw <= 0.0 || sh <= 0.0 { return None; }
+
+    let scale = (max_w as f32 / sw).min(max_h as f32 / sh).min(1.0);
+    let w = ((sw * scale).ceil() as u32).max(1);
+    let h = ((sh * scale).ceil() as u32).max(1);
+
+    let mut pixmap = resvg::tiny_skia::Pixmap::new(w, h)?;
+    resvg::render(&tree,
+        resvg::tiny_skia::Transform::from_scale(scale, scale),
+        &mut pixmap.as_mut());
+
+    // tiny-skia returns premultiplied RGBA; egui expects straight/unmultiplied
+    let straight = unpremultiply(pixmap.data());
+    Some((straight, w, h))
+}
+
+/// Convert premultiplied RGBA (tiny-skia output) to straight-alpha RGBA (egui input).
+fn unpremultiply(data: &[u8]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(data.len());
+    for px in data.chunks_exact(4) {
+        let (r, g, b, a) = (px[0], px[1], px[2], px[3]);
+        if a == 0 {
+            out.extend_from_slice(&[0, 0, 0, 0]);
+        } else {
+            let af = a as f32 / 255.0;
+            out.push((r as f32 / af).min(255.0) as u8);
+            out.push((g as f32 / af).min(255.0) as u8);
+            out.push((b as f32 / af).min(255.0) as u8);
+            out.push(a);
         }
     }
-
     out
 }
 
@@ -286,18 +444,16 @@ fn xml_escape(s: &str) -> String {
 const GITHUB_BASE: &str =
     "https://raw.githubusercontent.com/rusty-suite/rusty_qr/main/templates/";
 
-/// Fetch the remote template index (non-blocking: call from a background thread).
+/// Fetch the remote template index. Call from a background thread.
 pub fn fetch_remote_index() -> Result<Vec<RemoteTemplate>, String> {
-    let url = format!("{GITHUB_BASE}index.json");
+    let url  = format!("{GITHUB_BASE}index.json");
     let resp = ureq::get(&url)
         .timeout(std::time::Duration::from_secs(5))
         .call()
         .map_err(|e| e.to_string())?;
-
-    let json: serde_json::Value = resp.into_json::<serde_json::Value>().map_err(|e| e.to_string())?;
-    let arr = json.as_array()
-        .ok_or_else(|| "index.json invalide".to_string())?;
-
+    let json: serde_json::Value =
+        resp.into_json::<serde_json::Value>().map_err(|e| e.to_string())?;
+    let arr = json.as_array().ok_or_else(|| "index.json invalide".to_string())?;
     Ok(arr.iter().filter_map(|v| {
         Some(RemoteTemplate {
             id:          v["id"].as_str()?.to_string(),
@@ -309,7 +465,7 @@ pub fn fetch_remote_index() -> Result<Vec<RemoteTemplate>, String> {
     }).collect())
 }
 
-/// Download a single remote template SVG file (non-blocking: call from a background thread).
+/// Download a single remote template SVG. Call from a background thread.
 pub fn fetch_remote_svg(file: &str) -> Result<String, String> {
     let url = format!("{GITHUB_BASE}{file}");
     ureq::get(&url)

@@ -5,7 +5,7 @@ use crate::export::ExportFormat;
 use crate::history::{LibraryEntry, load_library};
 use crate::qr::types::QrForm;
 use crate::style::profile::{StyleProfile, load_profiles, save_profiles};
-use crate::template::RemoteTemplate;
+use crate::template::{RemoteTemplate, TemplateField};
 use crate::ui;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -56,6 +56,9 @@ pub struct RustyQrApp {
     /// 0 = aucun, 1..=BUILTIN.len() = intégré, BUILTIN.len()+1 = personnalisé, au-delà = distant
     pub selected_template_idx: usize,
     pub custom_template_svg: Option<String>,
+    pub template_field_data: Vec<TemplateField>,
+    pub template_preview_texture: Option<TextureHandle>,
+    pub template_preview_dirty: bool,
     pub remote_templates: Vec<RemoteTemplate>,
     pub remote_fetch_status: Option<(bool, String)>,
     pub remote_fetch_rx: Option<std::sync::mpsc::Receiver<Result<Vec<RemoteTemplate>, String>>>,
@@ -88,6 +91,9 @@ impl RustyQrApp {
             logo_texture: None,
             selected_template_idx: 0,
             custom_template_svg: None,
+            template_field_data: Vec::new(),
+            template_preview_texture: None,
+            template_preview_dirty: false,
             remote_templates: Vec::new(),
             remote_fetch_status: None,
             remote_fetch_rx: None,
@@ -149,6 +155,42 @@ impl eframe::App for RustyQrApp {
                     Err(e) => (false, format!("✗ {e}")),
                 });
                 self.remote_svg_dl = None;
+            }
+        }
+
+        // ── Template SVG preview (re-render when dirty) ──────────────────────
+        if self.template_preview_dirty {
+            self.template_preview_dirty = false;
+            if self.selected_template_idx == 0 {
+                self.template_preview_texture = None;
+            } else {
+                // Retrieve the template SVG string without keeping a borrow on self
+                let tpl_svg: Option<String> = {
+                    let n = crate::template::BUILTIN.len();
+                    let ci = n + 1;
+                    let rb = n + 2;
+                    if self.selected_template_idx <= n {
+                        Some(crate::template::BUILTIN[self.selected_template_idx - 1].svg.to_string())
+                    } else if self.selected_template_idx == ci {
+                        self.custom_template_svg.clone()
+                    } else {
+                        let ri = self.selected_template_idx - rb;
+                        self.remote_templates.get(ri).and_then(|t| t.svg.clone())
+                    }
+                };
+                if let Some(svg_str) = tpl_svg {
+                    let preview_svg = crate::template::render_preview(
+                        &svg_str, &self.card, &self.template_field_data,
+                    );
+                    if let Some((rgba, w, h)) = crate::template::svg_to_rgba(&preview_svg, 400, 320) {
+                        let img = egui::ColorImage::from_rgba_unmultiplied(
+                            [w as usize, h as usize], &rgba,
+                        );
+                        self.template_preview_texture = Some(
+                            ctx.load_texture("tmpl_preview", img, egui::TextureOptions::LINEAR),
+                        );
+                    }
+                }
             }
         }
 
@@ -227,7 +269,7 @@ impl eframe::App for RustyQrApp {
             nav_btn(ui, &mut self.tab, Tab::Creator,      "📄 Créer QR");
             nav_btn(ui, &mut self.tab, Tab::Profiles,     "🎨 Profils de style");
             nav_btn(ui, &mut self.tab, Tab::Library,      "📚 Bibliothèque");
-            nav_btn(ui, &mut self.tab, Tab::CardDesigner, "🗺️ Concepteur de cartes");
+            nav_btn(ui, &mut self.tab, Tab::CardDesigner, "\u{1F5FA} Concepteur de cartes");
             nav_btn(ui, &mut self.tab, Tab::Export,       "💾 Exporter");
 
             ui.add_space(8.0);
