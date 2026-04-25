@@ -8,10 +8,13 @@ use crate::style::{profile::StyleProfile, renderer};
 
 #[derive(Clone, Copy, PartialEq, Serialize, Deserialize, Debug)]
 pub enum CardLayout {
-    BusinessCard, // 85 × 54 mm — QR gauche, texte droite
-    Label,        // 60 × 60 mm — QR centré, texte dessous
-    Badge,        // 90 × 60 mm — QR + Nom + Titre
-    Flyer,        // 148 × 105 mm (A6) — QR grand + descriptif
+    BusinessCard, // 85 × 54 mm  — QR gauche, texte droite
+    Label,        // 60 × 60 mm  — QR centré, texte dessous
+    Badge,        // 90 × 60 mm  — QR + Nom + Titre, bande d'accent haut
+    Flyer,        // 148 × 105 mm (A6) — grand QR + descriptif
+    Square,       // 80 × 80 mm  — autocollant / réseau social
+    Poster,       // 148 × 210 mm (A5) — affiche promotionnelle
+    Ticket,       // 90 × 50 mm  — bon / coupon / billet
 }
 
 impl CardLayout {
@@ -20,36 +23,48 @@ impl CardLayout {
         Self::Label,
         Self::Badge,
         Self::Flyer,
+        Self::Square,
+        Self::Poster,
+        Self::Ticket,
     ];
 
     pub fn label(&self) -> &'static str {
         match self {
-            Self::BusinessCard => "Carte de visite (85×54 mm)",
-            Self::Label        => "Étiquette QR (60×60 mm)",
-            Self::Badge        => "Badge (90×60 mm)",
+            Self::BusinessCard => "Carte de visite (85\u{D7}54 mm)",
+            Self::Label        => "\u{C9}tiquette QR (60\u{D7}60 mm)",
+            Self::Badge        => "Badge (90\u{D7}60 mm)",
             Self::Flyer        => "Flyer compact (A6)",
+            Self::Square       => "Carr\u{E9} (80\u{D7}80 mm)",
+            Self::Poster       => "Affiche A5 (148\u{D7}210 mm)",
+            Self::Ticket       => "Ticket / Coupon (90\u{D7}50 mm)",
         }
     }
 
     /// Canvas dimensions in pixels at 96 dpi (for preview / PNG export).
     pub fn canvas_px(&self) -> (u32, u32) {
-        // 1 mm = 3.78 px @ 96 dpi
+        // 1 mm ≈ 3.78 px @ 96 dpi
         const K: f32 = 3.78;
         match self {
-            Self::BusinessCard => (mm(85.0, K), mm(54.0,  K)),
-            Self::Label        => (mm(60.0, K), mm(60.0,  K)),
-            Self::Badge        => (mm(90.0, K), mm(60.0,  K)),
-            Self::Flyer        => (mm(148.0,K), mm(105.0, K)),
+            Self::BusinessCard => (mm(85.0,  K), mm(54.0,  K)),
+            Self::Label        => (mm(60.0,  K), mm(60.0,  K)),
+            Self::Badge        => (mm(90.0,  K), mm(60.0,  K)),
+            Self::Flyer        => (mm(148.0, K), mm(105.0, K)),
+            Self::Square       => (mm(80.0,  K), mm(80.0,  K)),
+            Self::Poster       => (mm(148.0, K), mm(210.0, K)),
+            Self::Ticket       => (mm(90.0,  K), mm(50.0,  K)),
         }
     }
 
     /// Field labels for the text zones.
     pub fn field_labels(&self) -> &'static [&'static str] {
         match self {
-            Self::BusinessCard => &["Nom", "Titre / Poste", "Téléphone", "Email", "Site web"],
+            Self::BusinessCard => &["Nom", "Titre / Poste", "T\u{E9}l\u{E9}phone", "Email", "Site web"],
             Self::Label        => &["Titre", "Description"],
             Self::Badge        => &["Nom", "Organisation", "Identifiant"],
             Self::Flyer        => &["Titre", "Sous-titre", "Description", "Contact"],
+            Self::Square       => &["Titre", "Sous-titre", "Contact"],
+            Self::Poster       => &["Titre", "Accroche", "Description", "Contact", "Site web"],
+            Self::Ticket       => &["\u{C9}v\u{E9}nement", "Date / Lieu", "R\u{E9}f\u{E9}rence"],
         }
     }
 }
@@ -207,7 +222,6 @@ pub fn to_svg(config: &CardConfig, matrix: Option<&QrMatrix>, profile: &StylePro
             let qr_y  = (h as f32 * 0.10) as u32;
             embed_qr_svg(&mut svg, matrix, profile, qr_x, qr_y, qr_sz);
 
-            // Bottom text area
             let ty_base = (qr_y + qr_sz + 14) as i32;
             let labels = config.layout.field_labels();
             let mut ty = ty_base;
@@ -225,6 +239,109 @@ pub fn to_svg(config: &CardConfig, matrix: Option<&QrMatrix>, profile: &StylePro
                     r#"  <text x="{cx}" y="{ty}" text-anchor="middle"
        font-family="Arial,sans-serif" font-size="{fs}" font-weight="{weight}"
        fill="{color}"><!-- {label_hint} -->{}</text>
+"#,
+                    escape_xml(field)
+                ));
+                ty += fs + 5;
+            }
+        }
+
+        // ── Carré ─────────────────────────────────────────────────────────────
+        CardLayout::Square => {
+            let qr_sz = (w as f32 * 0.70) as u32;
+            let qr_x  = (w - qr_sz) / 2;
+            let qr_y  = (h as f32 * 0.06) as u32;
+            embed_qr_svg(&mut svg, matrix, profile, qr_x, qr_y, qr_sz);
+
+            let labels = config.layout.field_labels();
+            let mut ty = (qr_y + qr_sz + 12) as i32;
+            let cx = (w / 2) as i32;
+            for (i, field) in config.fields.iter().enumerate() {
+                if field.is_empty() { continue; }
+                let (fs, color, bold) = match i {
+                    0 => (13, &acc, true),
+                    1 => (10, &fg, false),
+                    _ => (9,  &fg, false),
+                };
+                let weight = if bold { "bold" } else { "normal" };
+                let label_hint = egui_hint(labels.get(i).copied().unwrap_or(""));
+                svg.push_str(&format!(
+                    r#"  <text x="{cx}" y="{ty}" text-anchor="middle"
+       font-family="Arial,sans-serif" font-size="{fs}" font-weight="{weight}"
+       fill="{color}"><!-- {label_hint} -->{}</text>
+"#,
+                    escape_xml(field)
+                ));
+                ty += fs + 4;
+            }
+        }
+
+        // ── Affiche A5 ────────────────────────────────────────────────────────
+        CardLayout::Poster => {
+            // Accent header band
+            svg.push_str(&format!(
+                r#"  <rect x="0" y="0" width="{w}" height="14" fill="{acc}"/>
+"#
+            ));
+
+            let qr_sz = (w as f32 * 0.45) as u32;
+            let qr_x  = (w - qr_sz) / 2;
+            let qr_y  = (h as f32 * 0.06) as u32;
+            embed_qr_svg(&mut svg, matrix, profile, qr_x, qr_y, qr_sz);
+
+            let labels = config.layout.field_labels();
+            let mut ty = (qr_y + qr_sz + 20) as i32;
+            let cx = (w / 2) as i32;
+            for (i, field) in config.fields.iter().enumerate() {
+                if field.is_empty() { continue; }
+                let (fs, color, bold) = match i {
+                    0 => (22, &acc, true),
+                    1 => (14, &fg, true),
+                    _ => (11, &fg, false),
+                };
+                let weight = if bold { "bold" } else { "normal" };
+                let label_hint = egui_hint(labels.get(i).copied().unwrap_or(""));
+                svg.push_str(&format!(
+                    r#"  <text x="{cx}" y="{ty}" text-anchor="middle"
+       font-family="Arial,sans-serif" font-size="{fs}" font-weight="{weight}"
+       fill="{color}"><!-- {label_hint} -->{}</text>
+"#,
+                    escape_xml(field)
+                ));
+                ty += fs + 6;
+            }
+        }
+
+        // ── Ticket ────────────────────────────────────────────────────────────
+        CardLayout::Ticket => {
+            // Thin accent band at top
+            svg.push_str(&format!(
+                r#"  <rect x="0" y="0" width="{w}" height="8" fill="{acc}"/>
+"#
+            ));
+
+            let qr_sz  = (h as f32 * 0.78) as u32;
+            let qr_x   = (h as f32 * 0.08) as u32;
+            let qr_y   = (h - qr_sz) / 2;
+            let text_x = (qr_x + qr_sz + 14) as i32;
+            let text_w = w as i32 - text_x - 8;
+            embed_qr_svg(&mut svg, matrix, profile, qr_x, qr_y, qr_sz);
+
+            let labels = config.layout.field_labels();
+            let mut ty = (h as f32 * 0.32) as i32;
+            for (i, field) in config.fields.iter().enumerate() {
+                if field.is_empty() { continue; }
+                let (fs, color, bold) = match i {
+                    0 => (13, &fg, true),
+                    1 => (9,  &acc, false),
+                    _ => (8,  &fg, false),
+                };
+                let weight = if bold { "bold" } else { "normal" };
+                let label_hint = egui_hint(labels.get(i).copied().unwrap_or(""));
+                svg.push_str(&format!(
+                    r#"  <text x="{text_x}" y="{ty}" font-family="Arial,sans-serif" font-size="{fs}"
+       font-weight="{weight}" fill="{color}" textLength="{text_w}"
+       lengthAdjust="spacingAndGlyphs"><!-- {label_hint} -->{}</text>
 "#,
                     escape_xml(field)
                 ));
@@ -299,6 +416,9 @@ pub fn to_pdf(config: &CardConfig, matrix: Option<&QrMatrix>, profile: &StylePro
             CardLayout::Label        => (w_px as f32 * 0.58) as u32,
             CardLayout::Badge        => (h_px as f32 * 0.75) as u32,
             CardLayout::Flyer        => (w_px as f32 * 0.40) as u32,
+            CardLayout::Square       => (w_px as f32 * 0.70) as u32,
+            CardLayout::Poster       => (w_px as f32 * 0.45) as u32,
+            CardLayout::Ticket       => (h_px as f32 * 0.78) as u32,
         };
         let mut tmp = profile.clone();
         tmp.module_px = (qr_sz_px as usize / (mat.len() + tmp.quiet_zone as usize * 2 + 1)).max(1) as u32;
@@ -322,12 +442,14 @@ pub fn to_pdf(config: &CardConfig, matrix: Option<&QrMatrix>, profile: &StylePro
 
         let qr_x_px = match config.layout {
             CardLayout::BusinessCard | CardLayout::Badge => (h_px as f32 * 0.09) as i32,
+            CardLayout::Ticket => (h_px as f32 * 0.08) as i32,
             _ => ((w_px - qr_sz_px) / 2) as i32,
         };
         let qr_y_px = match config.layout {
             CardLayout::BusinessCard => (h_px as f32 * 0.09) as i32,
-            CardLayout::Label | CardLayout::Flyer => (h_px as f32 * 0.06) as i32,
-            CardLayout::Badge => ((h_px - qr_sz_px) / 2) as i32,
+            CardLayout::Label | CardLayout::Flyer | CardLayout::Square | CardLayout::Poster
+                => (h_px as f32 * 0.06) as i32,
+            CardLayout::Badge | CardLayout::Ticket => ((h_px - qr_sz_px) / 2) as i32,
         };
 
         let qr_x_mm = qr_x_px as f32 / DPI * 25.4;
@@ -363,11 +485,19 @@ pub fn to_pdf(config: &CardConfig, matrix: Option<&QrMatrix>, profile: &StylePro
     let lay = doc.get_page(page).get_layer(layer);
     let text_x_mm = match config.layout {
         CardLayout::BusinessCard => {
-            let qr_sz  = (h_px as f32 * 0.82) as f32;
-            let qr_x   = h_px as f32 * 0.09;
+            let qr_sz = h_px as f32 * 0.82;
+            let qr_x  = h_px as f32 * 0.09;
             (qr_x + qr_sz + h_px as f32 * 0.07) / DPI * 25.4
         }
-        _ => 5.0,
+        CardLayout::Badge | CardLayout::Ticket => {
+            let qr_sz = match config.layout {
+                CardLayout::Badge  => h_px as f32 * 0.75,
+                _                  => h_px as f32 * 0.78,
+            };
+            let qr_x = h_px as f32 * 0.09;
+            (qr_x + qr_sz + 14.0) / DPI * 25.4
+        }
+        _ => w_mm / 2.0, // centered layouts
     };
 
     let mut ty_mm = h_mm - 8.0;
