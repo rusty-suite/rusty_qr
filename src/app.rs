@@ -1,6 +1,8 @@
 use egui::TextureHandle;
 
+use crate::card::CardConfig;
 use crate::export::ExportFormat;
+use crate::history::{LibraryEntry, load_library};
 use crate::qr::types::QrForm;
 use crate::style::profile::{StyleProfile, load_profiles, save_profiles};
 use crate::ui;
@@ -9,36 +11,49 @@ use crate::ui;
 pub enum Tab {
     Creator,
     Profiles,
+    Library,
+    CardDesigner,
     Export,
 }
 
 pub struct RustyQrApp {
     pub tab: Tab,
 
-    // QR creator
+    // ── QR creator ────────────────────────────────────────────────────────────
     pub form: QrForm,
     pub qr_matrix: Option<Vec<Vec<bool>>>,
     pub qr_error: Option<String>,
     pub preview_texture: Option<TextureHandle>,
     pub preview_dirty: bool,
 
-    // Profiles
+    // ── Profiles ──────────────────────────────────────────────────────────────
     pub profiles: Vec<StyleProfile>,
     pub selected_profile: usize,
+    pub confirm_delete_profile: Option<usize>,
+    pub profiles_dirty: bool,
 
-    // Export
+    // ── Bibliothèque ──────────────────────────────────────────────────────────
+    pub library: Vec<LibraryEntry>,
+    pub loaded_library_id: Option<u64>,
+    pub show_save_dialog: bool,
+    pub save_name_input: String,
+
+    // ── Concepteur de cartes ──────────────────────────────────────────────────
+    pub card: CardConfig,
+    pub card_export_status: Option<(bool, String)>,
+
+    // ── Export ────────────────────────────────────────────────────────────────
     pub export_format: ExportFormat,
     pub export_path: String,
-    pub export_status: Option<(bool, String)>, // (ok, message)
+    pub export_status: Option<(bool, String)>,
 
-    // À propos
+    // ── À propos ─────────────────────────────────────────────────────────────
     pub show_about: bool,
-    pub logo_texture: Option<egui::TextureHandle>,
+    pub logo_texture: Option<TextureHandle>,
 }
 
 impl RustyQrApp {
     pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
-        let profiles = load_profiles();
         Self {
             tab: Tab::Creator,
             form: QrForm::default(),
@@ -46,8 +61,16 @@ impl RustyQrApp {
             qr_error: None,
             preview_texture: None,
             preview_dirty: true,
-            profiles,
+            profiles: load_profiles(),
             selected_profile: 0,
+            confirm_delete_profile: None,
+            profiles_dirty: false,
+            library: load_library(),
+            loaded_library_id: None,
+            show_save_dialog: false,
+            save_name_input: String::new(),
+            card: CardConfig::default(),
+            card_export_status: None,
             export_format: ExportFormat::Png,
             export_path: String::new(),
             export_status: None,
@@ -65,14 +88,8 @@ impl RustyQrApp {
 
     pub fn regenerate_qr(&mut self) {
         match crate::qr::encoder::encode(&self.form) {
-            Ok(matrix) => {
-                self.qr_matrix = Some(matrix);
-                self.qr_error = None;
-            }
-            Err(e) => {
-                self.qr_matrix = None;
-                self.qr_error = Some(e.to_string());
-            }
+            Ok(m)  => { self.qr_matrix = Some(m); self.qr_error = None; }
+            Err(e) => { self.qr_matrix = None; self.qr_error = Some(e.to_string()); }
         }
         self.preview_dirty = true;
     }
@@ -102,139 +119,115 @@ impl eframe::App for RustyQrApp {
             });
         });
 
-        // ── Chargement lazy du logo (nécessite ctx, donc fait ici) ──────────
+        // ── Logo texture (lazy) ───────────────────────────────────────────────
         if self.logo_texture.is_none() {
             let rgba = crate::logo::generate_rgba(96);
-            let img = egui::ColorImage::from_rgba_unmultiplied([96, 96], &rgba);
+            let img  = egui::ColorImage::from_rgba_unmultiplied([96, 96], &rgba);
             self.logo_texture = Some(ctx.load_texture("logo", img, egui::TextureOptions::LINEAR));
         }
 
         // ── Modal "À propos" ─────────────────────────────────────────────────
         if self.show_about {
             egui::Window::new("À propos de RustyQR")
-                .collapsible(false)
-                .resizable(false)
-                .auto_sized()
+                .collapsible(false).resizable(false).auto_sized()
                 .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
                 .show(ctx, |ui| {
                     ui.add_space(8.0);
-
-                    // Logo centré
                     if let Some(tex) = &self.logo_texture {
                         ui.vertical_centered(|ui| {
-                            ui.add(
-                                egui::Image::new(tex)
-                                    .fit_to_exact_size(egui::vec2(96.0, 96.0)),
-                            );
+                            ui.add(egui::Image::new(tex).fit_to_exact_size(egui::vec2(96.0, 96.0)));
                             ui.add_space(6.0);
-                            ui.label(
-                                egui::RichText::new("RustyQR")
-                                    .size(20.0)
-                                    .strong(),
-                            );
+                            ui.label(egui::RichText::new("RustyQR").size(20.0).strong());
                         });
                     }
-
                     ui.add_space(10.0);
                     ui.separator();
                     ui.add_space(8.0);
-
-                    egui::Grid::new("about_grid")
-                        .num_columns(2)
-                        .spacing([16.0, 6.0])
-                        .show(ui, |ui| {
-                            ui.label(egui::RichText::new("Application :").weak());
-                            ui.label("Rusty QR");
-                            ui.end_row();
-
-                            ui.label(egui::RichText::new("Version :").weak());
-                            ui.label(egui::RichText::new("v1.0.0").strong());
-                            ui.end_row();
-
-                            ui.label(egui::RichText::new("Auteur :").weak());
-                            ui.label("rusty-suite");
-                            ui.end_row();
-
-                            ui.label(egui::RichText::new("Licence :").weak());
-                            ui.label("PolyForm-Noncommercial");
-                            ui.end_row();
-
-                            ui.label(egui::RichText::new("Description :").weak());
-                            ui.label("Générateur de codes QR multi-formats\navec profils de style et export vectoriel.");
-                            ui.end_row();
-
-                            ui.label(egui::RichText::new("Dépôt :").weak());
-                            ui.add(egui::Hyperlink::from_label_and_url(
-                                "github.com/rusty-suite/rusty_qr",
-                                "https://github.com/rusty-suite/rusty_qr",
-                            ));
-                            ui.end_row();
-                        });
-
+                    egui::Grid::new("about_grid").num_columns(2).spacing([16.0, 6.0]).show(ui, |ui| {
+                        row(ui, "Application :", "Rusty QR");
+                        row(ui, "Version :",     "v1.0.0");
+                        row(ui, "Auteur :",      "rusty-suite");
+                        row(ui, "Licence :",     "PolyForm-Noncommercial");
+                        row(ui, "Description :", "Générateur de codes QR multi-formats\navec profils de style et export vectoriel.");
+                        ui.label(egui::RichText::new("Dépôt :").weak());
+                        ui.add(egui::Hyperlink::from_label_and_url(
+                            "github.com/rusty-suite/rusty_qr",
+                            "https://github.com/rusty-suite/rusty_qr",
+                        ));
+                        ui.end_row();
+                    });
                     ui.add_space(12.0);
                     ui.separator();
                     ui.add_space(6.0);
-
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         ui.add_space(4.0);
-                        if ui.button("  Fermer  ").clicked() {
-                            self.show_about = false;
-                        }
+                        if ui.button("  Fermer  ").clicked() { self.show_about = false; }
                     });
                     ui.add_space(4.0);
                 });
         }
 
-        // Sidebar left — navigation + profile list
-        egui::SidePanel::left("nav")
-            .resizable(false)
-            .exact_width(180.0)
-            .show(ctx, |ui| {
-                ui.add_space(8.0);
-                ui.separator();
+        // ── Sidebar gauche ───────────────────────────────────────────────────
+        egui::SidePanel::left("nav").resizable(false).exact_width(190.0).show(ctx, |ui| {
+            ui.add_space(8.0);
+            ui.separator();
+            ui.add_space(4.0);
+
+            nav_btn(ui, &mut self.tab, Tab::Creator,      "📄 Créer QR");
+            nav_btn(ui, &mut self.tab, Tab::Profiles,     "🎨 Profils de style");
+            nav_btn(ui, &mut self.tab, Tab::Library,      "📚 Bibliothèque");
+            nav_btn(ui, &mut self.tab, Tab::CardDesigner, "🪪 Concepteur de cartes");
+            nav_btn(ui, &mut self.tab, Tab::Export,       "💾 Exporter");
+
+            ui.add_space(8.0);
+            ui.separator();
+            ui.add_space(4.0);
+
+            // Indicateur bibliothèque
+            let count = self.library.len();
+            if count > 0 {
+                ui.label(egui::RichText::new(format!("{count} entrée(s) sauvegardée(s)")).small().weak());
                 ui.add_space(4.0);
+            }
 
-                if ui.selectable_label(self.tab == Tab::Creator,  "📄 Créer QR").clicked() {
-                    self.tab = Tab::Creator;
+            // Profil actif
+            ui.label(egui::RichText::new("Profil actif").small().weak());
+            ui.add_space(2.0);
+            let names: Vec<String> = self.profiles.iter().map(|p| p.name.clone()).collect();
+            for (i, name) in names.iter().enumerate() {
+                if ui.selectable_label(self.selected_profile == i, name).clicked() {
+                    self.selected_profile = i;
+                    self.preview_dirty = true;
                 }
-                if ui.selectable_label(self.tab == Tab::Profiles, "🎨 Profils de style").clicked() {
-                    self.tab = Tab::Profiles;
-                }
-                if ui.selectable_label(self.tab == Tab::Export,   "💾 Exporter").clicked() {
-                    self.tab = Tab::Export;
-                }
-
-                ui.add_space(8.0);
-                ui.separator();
-                ui.add_space(4.0);
-                ui.label(egui::RichText::new("Profil actif").small().weak());
-                ui.add_space(2.0);
-
-                let names: Vec<String> = self.profiles.iter().map(|p| p.name.clone()).collect();
-                for (i, name) in names.iter().enumerate() {
-                    let selected = self.selected_profile == i;
-                    if ui.selectable_label(selected, name).clicked() {
-                        self.selected_profile = i;
-                        self.preview_dirty = true;
-                    }
-                }
-            });
-
-        // Right panel — QR preview (always visible)
-        egui::SidePanel::right("preview")
-            .resizable(true)
-            .default_width(300.0)
-            .show(ctx, |ui| {
-                ui::preview::show_preview(self, ui, ctx);
-            });
-
-        // Central panel — content based on active tab
-        egui::CentralPanel::default().show(ctx, |ui| {
-            match self.tab {
-                Tab::Creator  => ui::creator::show(self, ui),
-                Tab::Profiles => ui::profiles::show(self, ui),
-                Tab::Export   => ui::export_ui::show(self, ui),
             }
         });
+
+        // ── Panneau droit : aperçu QR ────────────────────────────────────────
+        egui::SidePanel::right("preview").resizable(true).default_width(300.0).show(ctx, |ui| {
+            ui::preview::show_preview(self, ui, ctx);
+        });
+
+        // ── Zone centrale ────────────────────────────────────────────────────
+        egui::CentralPanel::default().show(ctx, |ui| {
+            match self.tab {
+                Tab::Creator      => ui::creator::show(self, ui),
+                Tab::Profiles     => ui::profiles::show(self, ui),
+                Tab::Library      => ui::library::show(self, ui),
+                Tab::CardDesigner => ui::card_designer::show(self, ui),
+                Tab::Export       => ui::export_ui::show(self, ui),
+            }
+        });
+    }
+}
+
+fn row(ui: &mut egui::Ui, label: &str, value: &str) {
+    ui.label(egui::RichText::new(label).weak());
+    ui.label(value);
+    ui.end_row();
+}
+
+fn nav_btn(ui: &mut egui::Ui, current: &mut Tab, target: Tab, label: &str) {
+    if ui.selectable_label(*current == target, label).clicked() {
+        *current = target;
     }
 }
