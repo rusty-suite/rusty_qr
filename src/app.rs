@@ -219,6 +219,7 @@ impl eframe::App for RustyQrApp {
                         &svg_str, &self.card,
                         &self.template_field_data, &self.template_color_data,
                         matrix_ref, &profile,
+                        self.form.ec_level,
                     );
                     if let Some((rgba, w, h)) = crate::template::svg_to_rgba(&preview_svg, 400, 320) {
                         let img = egui::ColorImage::from_rgba_unmultiplied(

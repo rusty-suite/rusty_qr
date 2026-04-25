@@ -2,7 +2,7 @@
 
 use egui::Ui;
 use crate::app::RustyQrApp;
-use crate::card::{CardLayout, to_svg, to_pdf};
+use crate::card::{CardLayout, to_svg};
 use crate::template;
 use crate::theme;
 
@@ -549,6 +549,7 @@ fn export_card_svg(app: &mut RustyQrApp) {
         Some(tpl) => template::render(
             tpl, &app.card, matrix_ref, &profile,
             &app.template_field_data, &app.template_color_data,
+            app.form.ec_level,
         ),
         None => to_svg(&app.card, matrix_ref, &profile),
     };
@@ -571,11 +572,28 @@ fn export_card_pdf(app: &mut RustyQrApp) {
     let profile    = app.current_profile().clone();
     let p          = path.to_string_lossy().into_owned();
 
-    app.card_export_status = Some(match to_pdf(&app.card, matrix_ref, &profile) {
-        Ok(bytes) => match std::fs::write(&p, bytes) {
-            Ok(_)  => (true,  format!("✓ PDF exporté : {p}")),
-            Err(e) => (false, format!("✗ écriture : {e}")),
-        },
-        Err(e) => (false, format!("✗ {e}")),
+    // 1. Generate SVG (template or built-in layout)
+    let svg_str = match get_active_template_svg(app) {
+        Some(tpl) => template::render(
+            tpl, &app.card, matrix_ref, &profile,
+            &app.template_field_data, &app.template_color_data,
+            app.form.ec_level,
+        ),
+        None => to_svg(&app.card, matrix_ref, &profile),
+    };
+
+    // 2. Rasterize at 300 DPI (canvas was designed at 96 DPI)
+    let pdf_scale = 300.0_f32 / 96.0;
+    let result = match crate::template::svg_to_rgba_scaled(&svg_str, pdf_scale) {
+        Some((rgba, w, h)) => {
+            let (orig_w, orig_h) = app.card.layout.canvas_px();
+            crate::export::pdf::export_from_rgba(&rgba, w, h, orig_w, orig_h, &p)
+        }
+        None => Err("Impossible de rast\u{E9}riser le SVG".into()),
+    };
+
+    app.card_export_status = Some(match result {
+        Ok(_)  => (true,  format!("\u{2713} PDF export\u{E9} : {p}")),
+        Err(e) => (false, format!("\u{2717} {e}")),
     });
 }

@@ -240,6 +240,27 @@ impl QrForm {
             }
         }
     }
+
+    /// Human-readable hint for the save-name dialog, WITHOUT sensitive fields (no passwords).
+    pub fn display_name_hint(&self) -> String {
+        fn trunc(s: &str, n: usize) -> &str {
+            let end = s.char_indices().nth(n).map(|(i,_)| i).unwrap_or(s.len());
+            &s[..end]
+        }
+        match self.content_type {
+            QrContentType::Url    => format!("URL \u{2014} {}", trunc(&self.url, 50)),
+            QrContentType::Text   => format!("Texte \u{2014} {}", trunc(&self.text, 40)),
+            QrContentType::Wifi   => format!("WiFi \u{2014} {}", self.wifi_ssid), // mot de passe exclu
+            QrContentType::Sms    => format!("SMS \u{2014} {} \u{2014} {}", self.sms_number, trunc(&self.sms_message, 20)),
+            QrContentType::Tel    => format!("T\u{E9}l \u{2014} {}", self.tel_number),
+            QrContentType::Email  => format!("Email \u{2014} {}", self.email_to),
+            QrContentType::Vcard  => format!("vCard \u{2014} {}", self.vcard_name),
+            QrContentType::Mecard => format!("MECARD \u{2014} {}", self.mecard_name),
+            QrContentType::Geo    => format!("G\u{E9}o \u{2014} {}, {}", self.geo_lat, self.geo_lon),
+            QrContentType::Gs1    => format!("GS1 \u{2014} {}", trunc(&self.gs1_data, 30)),
+            QrContentType::TwoDoc => format!("2D-Doc \u{2014} {}", self.twod_cert_id),
+        }
+    }
 }
 
 fn urlencoded(s: &str) -> String {
