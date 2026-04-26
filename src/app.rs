@@ -139,6 +139,7 @@ pub struct RustyQrApp {
     pub work_dir: std::path::PathBuf,
     /// Message d'erreur affiché si le chargement de la langue a échoué.
     pub lang_error: Option<String>,
+    pub show_lang_settings: bool,
 }
 
 impl RustyQrApp {
@@ -189,6 +190,7 @@ impl RustyQrApp {
             lang,
             work_dir,
             lang_error,
+            show_lang_settings: false,
         }
     }
 
@@ -427,7 +429,12 @@ impl eframe::App for RustyQrApp {
         }
 
         // ── Top bar ──────────────────────────────────────────────────────────
-        let theme_tooltip = self.app_theme.tooltip(&self.lang);
+        let theme_tooltip    = self.app_theme.tooltip(&self.lang);
+        let lang_tooltip     = self.lang.t("nav.lang_settings");
+        let active_lang_disp = {
+            let stem = &self.lang.active_stem;
+            if stem.is_empty() { "—".to_string() } else { stem.clone() }
+        };
         egui::TopBottomPanel::top("topbar").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.add_space(4.0);
@@ -449,6 +456,13 @@ impl eframe::App for RustyQrApp {
                     {
                         self.app_theme = self.app_theme.cycle();
                         save_theme(self.app_theme);
+                    }
+                    ui.add_space(4.0);
+                    if ui.add(egui::Button::new("\u{1F310}").frame(false))
+                        .on_hover_text(format!("{lang_tooltip}  [{active_lang_disp}]"))
+                        .clicked()
+                    {
+                        self.show_lang_settings = true;
                     }
                 });
             });
@@ -513,6 +527,110 @@ impl eframe::App for RustyQrApp {
                     });
                     ui.add_space(4.0);
                 });
+        }
+
+        // ── Modal "Langue" (sélection + liste) ───────────────────────────────
+        if self.show_lang_settings {
+            // Prépare toutes les données AVANT la closure pour éviter les conflits d'emprunt
+            let lang_infos    = crate::lang::Lang::list_available(&self.work_dir);
+            let lang_dir_path = self.work_dir.join("lang")
+                .to_string_lossy().into_owned();
+            let active_stem   = self.lang.active_stem.clone();
+            let work_dir      = self.work_dir.clone();
+
+            let lp_title     = self.lang.t("lang_page.title");
+            let lp_active    = self.lang.t("lang_page.active_label");
+            let lp_available = self.lang.t("lang_page.available_label");
+            let lp_badge     = self.lang.t("lang_page.default_badge");
+            let lp_folder    = self.lang.t("lang_page.folder_label");
+            let lp_open      = self.lang.t("lang_page.open_folder_btn");
+            let lp_close     = self.lang.t("lang_page.close_button");
+            let lp_no_files  = self.lang.t("lang_page.no_files");
+
+            // Nom d'affichage de la langue active
+            let active_display = lang_infos.iter()
+                .find(|i| i.stem == active_stem)
+                .map(|i| i.display.clone())
+                .unwrap_or_else(|| if active_stem.is_empty() { "—".into() } else { active_stem.clone() });
+
+            let mut close      = false;
+            let mut selected: Option<(String, std::path::PathBuf)> = None;
+
+            egui::Window::new(lp_title)
+                .collapsible(false)
+                .resizable(false)
+                .fixed_size([420.0, 300.0])
+                .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+                .show(ctx, |ui| {
+                    // ── Langue active ────────────────────────────────────────
+                    ui.add_space(4.0);
+                    ui.horizontal(|ui| {
+                        ui.label(egui::RichText::new(&lp_active).weak());
+                        ui.label(egui::RichText::new(&active_display).strong());
+                    });
+                    ui.add_space(6.0);
+                    ui.separator();
+                    ui.add_space(4.0);
+
+                    // ── Liste des fichiers disponibles ───────────────────────
+                    ui.label(egui::RichText::new(&lp_available).weak().small());
+                    ui.add_space(4.0);
+
+                    let list_height = 160.0;
+                    egui::ScrollArea::vertical()
+                        .max_height(list_height)
+                        .id_source("lang_list")
+                        .show(ui, |ui| {
+                            ui.set_min_width(ui.available_width());
+                            if lang_infos.is_empty() {
+                                ui.label(egui::RichText::new(&lp_no_files).weak().italics());
+                            } else {
+                                for info in &lang_infos {
+                                    let is_active = info.stem == active_stem;
+                                    let label = if info.is_default {
+                                        format!("{}  {}", info.display, lp_badge)
+                                    } else {
+                                        info.display.clone()
+                                    };
+                                    if ui.selectable_label(is_active, label).clicked() && !is_active {
+                                        selected = Some((info.stem.clone(), info.path.clone()));
+                                    }
+                                }
+                            }
+                        });
+
+                    ui.add_space(6.0);
+                    ui.separator();
+                    ui.add_space(4.0);
+
+                    // ── Dossier + bouton ouvrir ──────────────────────────────
+                    ui.horizontal(|ui| {
+                        ui.label(egui::RichText::new(&lp_folder).weak().small());
+                        ui.label(egui::RichText::new(&lang_dir_path).small().monospace());
+                        if ui.small_button(&lp_open).clicked() {
+                            #[cfg(target_os = "windows")]
+                            let _ = std::process::Command::new("explorer")
+                                .arg(&work_dir.join("lang"))
+                                .spawn();
+                        }
+                    });
+
+                    ui.add_space(6.0);
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        ui.add_space(4.0);
+                        if ui.button(&lp_close).clicked() { close = true; }
+                    });
+                    ui.add_space(4.0);
+                });
+
+            // Applique la sélection (après la closure, emprunts libérés)
+            if let Some((stem, path)) = selected {
+                if let Ok(new_lang) = crate::lang::Lang::load_file(&path) {
+                    crate::lang::Lang::save_choice(&self.work_dir, &stem);
+                    self.lang = new_lang;
+                }
+            }
+            if close { self.show_lang_settings = false; }
         }
 
         // ── Sidebar gauche ───────────────────────────────────────────────────

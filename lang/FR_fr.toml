@@ -1,7 +1,7 @@
 # FR_fr.toml — Fichier de langue français (France)
-# Convention : PAYS_langue.toml
 
 [app]
+lang_name   = "Français (FR)"
 title       = "RustyQR — Générateur de codes QR"
 version     = "v1.0.0"
 author      = "rusty-suite"
@@ -22,6 +22,7 @@ library       = "\U0001F4DA Bibliothèque"
 card_designer = "\U0001F5FA Concepteur de cartes"
 export        = "\U0001F4BE Exporter"
 active_profile = "Profil actif"
+lang_settings = "Paramètres de langue"
 
 [sidebar]
 saved_single = "1 entrée sauvegardée"
@@ -36,7 +37,17 @@ license_label     = "Licence :"
 description_label = "Description :"
 repo_label        = "Dépôt :"
 close_button      = "  Fermer  "
-settings_button   = "  ⚙  "
+
+[lang_page]
+title           = "Language / Langue"
+active_label    = "Active :"
+available_label = "Fichiers disponibles :"
+default_badge   = "[défaut]"
+folder_label    = "Dossier :"
+open_folder_btn = "Ouvrir"
+close_button    = "  Fermer  "
+no_files        = "Aucun fichier de langue trouvé dans ce dossier."
+reload_btn      = "Actualiser"
 
 [errors]
 no_internet = "Ce programme a besoin d'un accès internet\npour télécharger ses ressources linguistiques."
