@@ -41,17 +41,18 @@ repo_label        = "Repository:"
 close_button      = "  Close  "
 
 [lang_page]
-title           = "Language / Langue"
+title           = "Langue / Language"
 active_label    = "Active:"
 available_label = "Available files:"
 default_badge   = "[default]"
 local_badge     = "[local]"
 repo_badge      = "[repo]"
-folder_label    = "Folder:"
+folder_label    = "Local language folder:"
 open_folder_btn = "Open"
 close_button    = "  Close  "
 no_files        = "No language file found in this folder."
 reload_btn      = "Refresh"
+reload_git_btn  = "Refresh Git"
 
 [errors]
 no_internet = "This program needs internet access\nto download its language resources."
