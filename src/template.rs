@@ -679,6 +679,11 @@ fn xml_escape(s: &str) -> String {
      .replace('"', "&quot;")
 }
 
+/// Returns true if `id` is already compiled into BUILTIN.
+pub fn is_builtin_id(id: &str) -> bool {
+    BUILTIN.iter().any(|t| t.id == id)
+}
+
 // ─── GitHub remote fetching ───────────────────────────────────────────────────
 
 const GITHUB_BASE: &str =
