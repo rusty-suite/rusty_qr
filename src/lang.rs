@@ -212,6 +212,21 @@ impl Lang {
         Ok(out)
     }
 
+    pub fn stem_compact_code(stem: &str) -> String {
+        let base = stem.split('.').next().unwrap_or(stem);
+        let mut it = base.splitn(2, '_');
+        let country = it.next().unwrap_or("").to_uppercase();
+        let lang = it.next().unwrap_or("").to_lowercase();
+        if lang.is_empty() {
+            return base.to_lowercase();
+        }
+        if country.is_empty() || country.eq_ignore_ascii_case(&lang) {
+            lang
+        } else {
+            format!("{lang}_{country}")
+        }
+    }
+
     // ── Téléchargement du fichier de secours depuis GitHub ───────────────────
 
     fn download_default(lang_dir: &Path) -> (Self, Option<String>) {

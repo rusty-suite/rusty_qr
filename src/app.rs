@@ -628,7 +628,7 @@ impl eframe::App for RustyQrApp {
             };
             let lp_repo      = {
                 let s = self.lang.t("lang_page.repo_badge");
-                if s == "lang_page.repo_badge" { "[repo]".into() } else { s }
+                if s == "lang_page.repo_badge" { "[git]".into() } else { s.replace("repo", "git").replace("Repo", "Git") }
             };
 
             // Nom d'affichage de la langue active
@@ -705,6 +705,7 @@ impl eframe::App for RustyQrApp {
                                     if info.is_remote {
                                         parts.push(lp_repo.clone());
                                     }
+                                    parts.push(crate::lang::Lang::stem_compact_code(&info.stem));
                                     let label = parts.join("  ");
                                     let clicked = ui.selectable_label(is_active, label).clicked();
                                     if clicked && !is_active {
