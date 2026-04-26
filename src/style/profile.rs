@@ -87,9 +87,7 @@ impl StyleProfile {
 
         // Nom de fichier déterministe basé sur le hash de l'URL
         let hash = url.bytes().fold(0u64, |h, b| h.wrapping_mul(31).wrapping_add(b as u64));
-        let cache_dir = dirs::cache_dir()
-            .unwrap_or_else(|| std::path::PathBuf::from("."))
-            .join("rusty_qr").join("logo_cache");
+        let cache_dir = crate::workdir::work_dir().join("logo_cache");
         std::fs::create_dir_all(&cache_dir).map_err(|e| e.to_string())?;
 
         let path = cache_dir.join(format!("{hash:016X}.{ext}"));
@@ -101,10 +99,7 @@ impl StyleProfile {
 // ─── Persistence ─────────────────────────────────────────────────────────────
 
 fn profiles_path() -> std::path::PathBuf {
-    let base = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
-    let dir = base.join("rusty_qr");
-    let _ = std::fs::create_dir_all(&dir);
-    dir.join("profiles.json")
+    crate::workdir::work_dir().join("profiles.json")
 }
 
 pub fn load_profiles() -> Vec<StyleProfile> {

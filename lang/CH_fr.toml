@@ -1,0 +1,44 @@
+# CH_fr.toml — Fichier de langue français (Suisse)
+# Convention : PAYS_langue.toml
+# Identique à FR_fr.toml — à personnaliser si des variantes CH sont nécessaires.
+
+[app]
+title       = "RustyQR — Générateur de codes QR"
+version     = "v1.0.0"
+author      = "rusty-suite"
+license     = "PolyForm-Noncommercial"
+description = "Générateur de codes QR multi-formats\navec profils de style et export vectoriel."
+repo_display = "github.com/rusty-suite/rusty_qr"
+repo_url    = "https://github.com/rusty-suite/rusty_qr"
+
+[theme]
+system  = "Thème système — cliquer pour Clair"
+light   = "Thème Clair — cliquer pour Sombre"
+dark    = "Thème Sombre — cliquer pour Système"
+
+[nav]
+create        = "\U0001F4C4 Créer QR"
+profiles      = "\U0001F3A8 Profils de style"
+library       = "\U0001F4DA Bibliothèque"
+card_designer = "\U0001F5FA Concepteur de cartes"
+export        = "\U0001F4BE Exporter"
+active_profile = "Profil actif"
+
+[sidebar]
+saved_single = "1 entrée sauvegardée"
+saved_plural = "{n} entrées sauvegardées"
+
+[about]
+window_title      = "À propos de RustyQR"
+app_label         = "Application :"
+version_label     = "Version :"
+author_label      = "Auteur :"
+license_label     = "Licence :"
+description_label = "Description :"
+repo_label        = "Dépôt :"
+close_button      = "  Fermer  "
+settings_button   = "  ⚙  "
+
+[errors]
+no_internet = "Ce programme a besoin d'un accès internet\npour télécharger ses ressources linguistiques."
+lang_load   = "Erreur : impossible de charger le fichier de langue."
