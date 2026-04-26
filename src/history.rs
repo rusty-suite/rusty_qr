@@ -51,10 +51,7 @@ pub struct LibraryEntry {
 // ─── Persistence ─────────────────────────────────────────────────────────────
 
 fn library_path() -> std::path::PathBuf {
-    let base = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
-    let dir = base.join("rusty_qr");
-    let _ = std::fs::create_dir_all(&dir);
-    dir.join("library.json")
+    crate::workdir::work_dir().join("library.json")
 }
 
 fn now_string() -> String {

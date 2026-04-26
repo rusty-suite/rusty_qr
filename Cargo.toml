@@ -20,6 +20,7 @@ base64 = "0.22"
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 zip = { version = "2", default-features = false, features = ["deflate"] }
 dirs = "5"
+toml  = "0.8"
 ureq  = { version = "2", features = ["json"] }
 resvg = { version = "0.47", default-features = false, features = ["text", "system-fonts", "raster-images"] }
 

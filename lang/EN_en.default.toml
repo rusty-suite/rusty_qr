@@ -1,0 +1,44 @@
+# EN_en.default.toml — Default English language file (universal fallback)
+# Naming convention: PAYS_langue.toml  /  PAYS_langue.default.toml
+# This file is fetched automatically on first run if no lang/ files are found.
+
+[app]
+title       = "RustyQR — QR Code Generator"
+version     = "v1.0.0"
+author      = "rusty-suite"
+license     = "PolyForm-Noncommercial"
+description = "Multi-format QR code generator\nwith style profiles and vector export."
+repo_display = "github.com/rusty-suite/rusty_qr"
+repo_url    = "https://github.com/rusty-suite/rusty_qr"
+
+[theme]
+system  = "System theme — click for Light"
+light   = "Light theme — click for Dark"
+dark    = "Dark theme — click for System"
+
+[nav]
+create       = "\U0001F4C4 Create QR"
+profiles     = "\U0001F3A8 Style Profiles"
+library      = "\U0001F4DA Library"
+card_designer = "\U0001F5FA Card Designer"
+export       = "\U0001F4BE Export"
+active_profile = "Active profile"
+
+[sidebar]
+saved_single = "1 saved entry"
+saved_plural = "{n} saved entries"
+
+[about]
+window_title      = "About RustyQR"
+app_label         = "Application:"
+version_label     = "Version:"
+author_label      = "Author:"
+license_label     = "License:"
+description_label = "Description:"
+repo_label        = "Repository:"
+close_button      = "  Close  "
+settings_button   = "  ⚙  "
+
+[errors]
+no_internet = "This program needs internet access\nto download its language resources."
+lang_load   = "Error: unable to load the language file."

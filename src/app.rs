@@ -3,6 +3,7 @@ use egui::TextureHandle;
 use crate::card::CardConfig;
 use crate::export::ExportFormat;
 use crate::history::{LibraryEntry, load_library};
+use crate::lang::Lang;
 use crate::qr::types::QrForm;
 use crate::style::{profile::{StyleProfile, load_profiles, save_profiles}, renderer};
 use crate::template::{RemoteTemplate, TemplateColor, TemplateField};
@@ -33,20 +34,17 @@ impl AppTheme {
             AppTheme::Dark   => "\u{1F319}", // 🌙
         }
     }
-    fn tooltip(self) -> &'static str {
+    pub fn tooltip(self, lang: &Lang) -> String {
         match self {
-            AppTheme::System => "Thème système — cliquer pour Clair",
-            AppTheme::Light  => "Thème Clair — cliquer pour Sombre",
-            AppTheme::Dark   => "Thème Sombre — cliquer pour Système",
+            AppTheme::System => lang.t("theme.system"),
+            AppTheme::Light  => lang.t("theme.light"),
+            AppTheme::Dark   => lang.t("theme.dark"),
         }
     }
 }
 
 fn theme_path() -> std::path::PathBuf {
-    let base = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
-    let dir  = base.join("rusty_qr");
-    let _    = std::fs::create_dir_all(&dir);
-    dir.join("theme.json")
+    crate::workdir::work_dir().join("theme.json")
 }
 
 pub fn load_theme() -> AppTheme {
@@ -135,10 +133,21 @@ pub struct RustyQrApp {
 
     // ── Thème de l'interface ──────────────────────────────────────────────────
     pub app_theme: AppTheme,
+
+    // ── Langue & répertoire de travail ────────────────────────────────────────
+    pub lang: Lang,
+    pub work_dir: std::path::PathBuf,
+    /// Message d'erreur affiché si le chargement de la langue a échoué.
+    pub lang_error: Option<String>,
 }
 
 impl RustyQrApp {
-    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+    pub fn new(
+        cc: &eframe::CreationContext<'_>,
+        lang: Lang,
+        work_dir: std::path::PathBuf,
+        lang_error: Option<String>,
+    ) -> Self {
         setup_fonts(&cc.egui_ctx);
         Self {
             tab: Tab::Creator,
@@ -177,6 +186,9 @@ impl RustyQrApp {
             remote_fetch_rx: None,
             remote_svg_dl: None,
             app_theme: load_theme(),
+            lang,
+            work_dir,
+            lang_error,
         }
     }
 
@@ -392,7 +404,30 @@ impl eframe::App for RustyQrApp {
             }
         }
 
+        // ── Erreur de langue (modal au premier démarrage sans fichier) ────────
+        if self.lang_error.is_some() {
+            let err_msg = self.lang_error.clone().unwrap_or_default();
+            let mut dismiss = false;
+            egui::Window::new("\u{26A0} Langue")
+                .collapsible(false)
+                .resizable(false)
+                .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+                .show(ctx, |ui| {
+                    ui.add_space(6.0);
+                    ui.label(&err_msg);
+                    ui.add_space(10.0);
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if ui.button("  OK  ").clicked() {
+                            dismiss = true;
+                        }
+                    });
+                    ui.add_space(4.0);
+                });
+            if dismiss { self.lang_error = None; }
+        }
+
         // ── Top bar ──────────────────────────────────────────────────────────
+        let theme_tooltip = self.app_theme.tooltip(&self.lang);
         egui::TopBottomPanel::top("topbar").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.add_space(4.0);
@@ -408,9 +443,8 @@ impl eframe::App for RustyQrApp {
                         self.show_about = true;
                     }
                     ui.add_space(4.0);
-                    // Theme toggle button
                     if ui.add(egui::Button::new(self.app_theme.icon()).frame(false))
-                        .on_hover_text(self.app_theme.tooltip())
+                        .on_hover_text(&theme_tooltip)
                         .clicked()
                     {
                         self.app_theme = self.app_theme.cycle();
@@ -429,7 +463,21 @@ impl eframe::App for RustyQrApp {
 
         // ── Modal "À propos" ─────────────────────────────────────────────────
         if self.show_about {
-            egui::Window::new("À propos de RustyQR")
+            let about_title   = self.lang.t("about.window_title");
+            let lbl_app       = self.lang.t("about.app_label");
+            let lbl_ver       = self.lang.t("about.version_label");
+            let lbl_author    = self.lang.t("about.author_label");
+            let lbl_license   = self.lang.t("about.license_label");
+            let lbl_desc      = self.lang.t("about.description_label");
+            let lbl_repo      = self.lang.t("about.repo_label");
+            let desc_val      = self.lang.t("app.description");
+            let repo_display  = self.lang.t("app.repo_display");
+            let repo_url      = self.lang.t("app.repo_url");
+            let app_author    = self.lang.t("app.author");
+            let app_license   = self.lang.t("app.license");
+            let app_version   = self.lang.t("app.version");
+            let btn_close     = self.lang.t("about.close_button");
+            egui::Window::new(about_title)
                 .collapsible(false)
                 .resizable(false)
                 .fixed_size([360.0, 340.0])
@@ -447,16 +495,13 @@ impl eframe::App for RustyQrApp {
                     ui.separator();
                     ui.add_space(8.0);
                     egui::Grid::new("about_grid").num_columns(2).spacing([16.0, 6.0]).show(ui, |ui| {
-                        row(ui, "Application :", "Rusty QR");
-                        row(ui, "Version :",     "v1.0.0");
-                        row(ui, "Auteur :",      "rusty-suite");
-                        row(ui, "Licence :",     "PolyForm-Noncommercial");
-                        row(ui, "Description :", "Générateur de codes QR multi-formats\navec profils de style et export vectoriel.");
-                        ui.label(egui::RichText::new("Dépôt :").weak());
-                        ui.add(egui::Hyperlink::from_label_and_url(
-                            "github.com/rusty-suite/rusty_qr",
-                            "https://github.com/rusty-suite/rusty_qr",
-                        ));
+                        row(ui, &lbl_app,     "Rusty QR");
+                        row(ui, &lbl_ver,     &app_version);
+                        row(ui, &lbl_author,  &app_author);
+                        row(ui, &lbl_license, &app_license);
+                        row(ui, &lbl_desc,    &desc_val);
+                        ui.label(egui::RichText::new(&lbl_repo).weak());
+                        ui.add(egui::Hyperlink::from_label_and_url(&repo_display, &repo_url));
                         ui.end_row();
                     });
                     ui.add_space(12.0);
@@ -464,37 +509,48 @@ impl eframe::App for RustyQrApp {
                     ui.add_space(6.0);
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         ui.add_space(4.0);
-                        if ui.button("  Fermer  ").clicked() { self.show_about = false; }
+                        if ui.button(&btn_close).clicked() { self.show_about = false; }
                     });
                     ui.add_space(4.0);
                 });
         }
 
         // ── Sidebar gauche ───────────────────────────────────────────────────
+        let nav_create       = self.lang.t("nav.create");
+        let nav_profiles     = self.lang.t("nav.profiles");
+        let nav_library      = self.lang.t("nav.library");
+        let nav_card         = self.lang.t("nav.card_designer");
+        let nav_export       = self.lang.t("nav.export");
+        let lbl_active_prof  = self.lang.t("nav.active_profile");
+        let count            = self.library.len();
+        let lbl_saved = if count == 1 {
+            self.lang.t("sidebar.saved_single")
+        } else {
+            self.lang.t("sidebar.saved_plural").replace("{n}", &count.to_string())
+        };
         egui::SidePanel::left("nav").resizable(false).exact_width(190.0).show(ctx, |ui| {
             ui.add_space(8.0);
             ui.separator();
             ui.add_space(4.0);
 
-            nav_btn(ui, &mut self.tab, Tab::Creator,      "\u{1F4C4} Cr\u{E9}er QR");
-            nav_btn(ui, &mut self.tab, Tab::Profiles,     "\u{1F3A8} Profils de style");
-            nav_btn(ui, &mut self.tab, Tab::Library,      "\u{1F4DA} Biblioth\u{E8}que");
-            nav_btn(ui, &mut self.tab, Tab::CardDesigner, "\u{1F5FA} Concepteur de cartes");
-            nav_btn(ui, &mut self.tab, Tab::Export,       "\u{1F4BE} Exporter");
+            nav_btn(ui, &mut self.tab, Tab::Creator,      &nav_create);
+            nav_btn(ui, &mut self.tab, Tab::Profiles,     &nav_profiles);
+            nav_btn(ui, &mut self.tab, Tab::Library,      &nav_library);
+            nav_btn(ui, &mut self.tab, Tab::CardDesigner, &nav_card);
+            nav_btn(ui, &mut self.tab, Tab::Export,       &nav_export);
 
             ui.add_space(8.0);
             ui.separator();
             ui.add_space(4.0);
 
             // Indicateur bibliothèque
-            let count = self.library.len();
             if count > 0 {
-                ui.label(egui::RichText::new(format!("{count} entrée(s) sauvegardée(s)")).small().weak());
+                ui.label(egui::RichText::new(&lbl_saved).small().weak());
                 ui.add_space(4.0);
             }
 
             // Profil actif
-            ui.label(egui::RichText::new("Profil actif").small().weak());
+            ui.label(egui::RichText::new(&lbl_active_prof).small().weak());
             ui.add_space(2.0);
             let names: Vec<String> = self.profiles.iter().map(|p| p.name.clone()).collect();
             for (i, name) in names.iter().enumerate() {
@@ -523,14 +579,14 @@ impl eframe::App for RustyQrApp {
     }
 }
 
-fn row(ui: &mut egui::Ui, label: &str, value: &str) {
-    ui.label(egui::RichText::new(label).weak());
-    ui.label(value);
+fn row(ui: &mut egui::Ui, label: impl AsRef<str>, value: impl AsRef<str>) {
+    ui.label(egui::RichText::new(label.as_ref()).weak());
+    ui.label(value.as_ref());
     ui.end_row();
 }
 
-fn nav_btn(ui: &mut egui::Ui, current: &mut Tab, target: Tab, label: &str) {
-    if ui.selectable_label(*current == target, label).clicked() {
+fn nav_btn(ui: &mut egui::Ui, current: &mut Tab, target: Tab, label: impl AsRef<str>) {
+    if ui.selectable_label(*current == target, label.as_ref()).clicked() {
         *current = target;
     }
 }
