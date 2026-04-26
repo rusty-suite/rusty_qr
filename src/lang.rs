@@ -3,6 +3,15 @@ use std::path::{Path, PathBuf};
 
 const GITHUB_DEFAULT_LANG: &str =
     "https://raw.githubusercontent.com/rusty-suite/rusty_qr/main/lang/EN_en.default.toml";
+const GITHUB_LANG_API: &str =
+    "https://api.github.com/repos/rusty-suite/rusty_qr/contents/lang";
+
+const BUNDLED_LANGS: &[(&str, &str)] = &[
+    ("EN_en.default.toml", include_str!("../lang/EN_en.default.toml")),
+    ("FR_fr.toml",         include_str!("../lang/FR_fr.toml")),
+    ("DE_de.toml",         include_str!("../lang/DE_de.toml")),
+    ("IT_it.toml",         include_str!("../lang/IT_it.toml")),
+];
 
 // ─── Types publics ────────────────────────────────────────────────────────────
 
@@ -19,7 +28,16 @@ pub struct LangInfo {
     pub display: String,
     /// Vrai si le fichier porte le suffixe `.default`
     pub is_default: bool,
-    pub path: PathBuf,
+    pub path: Option<PathBuf>,
+    pub remote_url: Option<String>,
+    pub is_local: bool,
+    pub is_remote: bool,
+}
+
+#[derive(Clone)]
+pub struct RemoteLangInfo {
+    pub stem: String,
+    pub download_url: String,
 }
 
 // ─── Implémentation ───────────────────────────────────────────────────────────
@@ -48,6 +66,7 @@ impl Lang {
     pub fn load(work_dir: &Path) -> (Self, Option<String>) {
         let lang_dir = work_dir.join("lang");
         let _ = std::fs::create_dir_all(&lang_dir);
+        ensure_bundled_languages(&lang_dir);
 
         // 1. Préférence enregistrée
         if let Some(stem) = saved_choice(work_dir) {
@@ -108,7 +127,7 @@ impl Lang {
 
     /// Liste tous les fichiers `.toml` disponibles dans `{work_dir}/lang/`.
     /// Résultat trié : non-default d'abord, puis default, par ordre alphabétique.
-    pub fn list_available(work_dir: &Path) -> Vec<LangInfo> {
+    pub fn list_available(work_dir: &Path, remote_langs: &[RemoteLangInfo]) -> Vec<LangInfo> {
         let lang_dir = work_dir.join("lang");
         let mut infos: Vec<LangInfo> = toml_files_in(&lang_dir)
             .into_iter()
@@ -116,14 +135,81 @@ impl Lang {
                 let stem       = file_stem(&path);
                 let is_default = stem.ends_with(".default");
                 let display    = read_lang_name(&path).unwrap_or_else(|| friendly_name(&stem));
-                LangInfo { stem, display, is_default, path }
+                LangInfo {
+                    stem,
+                    display,
+                    is_default,
+                    path: Some(path),
+                    remote_url: None,
+                    is_local: true,
+                    is_remote: false,
+                }
             })
             .collect();
+
+        for remote in remote_langs {
+            if let Some(existing) = infos.iter_mut().find(|info| info.stem.eq_ignore_ascii_case(&remote.stem)) {
+                existing.remote_url = Some(remote.download_url.clone());
+                existing.is_remote = true;
+            } else {
+                let stem = remote.stem.clone();
+                infos.push(LangInfo {
+                    display: friendly_name(&stem),
+                    is_default: stem.ends_with(".default"),
+                    path: None,
+                    remote_url: Some(remote.download_url.clone()),
+                    is_local: false,
+                    is_remote: true,
+                    stem,
+                });
+            }
+        }
 
         infos.sort_by(|a, b| {
             a.is_default.cmp(&b.is_default).then(a.stem.cmp(&b.stem))
         });
         infos
+    }
+
+    pub fn download_to_lang_dir(work_dir: &Path, info: &RemoteLangInfo) -> Result<PathBuf, String> {
+        let lang_dir = work_dir.join("lang");
+        let _ = std::fs::create_dir_all(&lang_dir);
+        let body = ureq::get(&info.download_url)
+            .timeout(std::time::Duration::from_secs(15))
+            .call()
+            .map_err(|e| e.to_string())?
+            .into_string()
+            .map_err(|e| e.to_string())?;
+        let dest = lang_dir.join(format!("{}.toml", info.stem));
+        std::fs::write(&dest, body).map_err(|e| e.to_string())?;
+        Ok(dest)
+    }
+
+    pub fn fetch_remote_index() -> Result<Vec<RemoteLangInfo>, String> {
+        let resp = ureq::get(GITHUB_LANG_API)
+            .set("User-Agent", "rusty_qr")
+            .timeout(std::time::Duration::from_secs(8))
+            .call()
+            .map_err(|e| e.to_string())?;
+        let json: serde_json::Value = resp.into_json().map_err(|e| e.to_string())?;
+        let arr = json.as_array().ok_or_else(|| "index langue invalide".to_string())?;
+
+        let mut out: Vec<RemoteLangInfo> = arr.iter().filter_map(|item| {
+            let kind = item.get("type")?.as_str()?;
+            if kind != "file" {
+                return None;
+            }
+            let name = item.get("name")?.as_str()?;
+            if !name.ends_with(".toml") {
+                return None;
+            }
+            let stem = Path::new(name).file_stem()?.to_str()?.to_string();
+            let download_url = item.get("download_url")?.as_str()?.to_string();
+            Some(RemoteLangInfo { stem, download_url })
+        }).collect();
+
+        out.sort_by(|a, b| a.stem.cmp(&b.stem));
+        Ok(out)
     }
 
     // ── Téléchargement du fichier de secours depuis GitHub ───────────────────
@@ -191,6 +277,15 @@ fn toml_files_in(dir: &Path) -> Vec<PathBuf> {
         .filter_map(|e| e.ok().map(|e| e.path()))
         .filter(|p| p.extension().and_then(|e| e.to_str()) == Some("toml"))
         .collect()
+}
+
+fn ensure_bundled_languages(lang_dir: &Path) {
+    for &(name, content) in BUNDLED_LANGS {
+        let dest = lang_dir.join(name);
+        if !dest.exists() {
+            let _ = std::fs::write(dest, content);
+        }
+    }
 }
 
 fn saved_choice(work_dir: &Path) -> Option<String> {

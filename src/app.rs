@@ -3,7 +3,7 @@ use egui::TextureHandle;
 use crate::card::CardConfig;
 use crate::export::ExportFormat;
 use crate::history::{LibraryEntry, load_library};
-use crate::lang::Lang;
+use crate::lang::{Lang, RemoteLangInfo};
 use crate::qr::types::QrForm;
 use crate::style::{profile::{StyleProfile, load_profiles, save_profiles}, renderer};
 use crate::template::{RemoteTemplate, TemplateColor, TemplateField};
@@ -140,6 +140,10 @@ pub struct RustyQrApp {
     /// Message d'erreur affiché si le chargement de la langue a échoué.
     pub lang_error: Option<String>,
     pub show_lang_settings: bool,
+    pub remote_langs: Vec<RemoteLangInfo>,
+    pub lang_remote_fetch_status: Option<(bool, String)>,
+    pub lang_remote_fetch_rx: Option<std::sync::mpsc::Receiver<Result<Vec<RemoteLangInfo>, String>>>,
+    pub lang_download_rx: Option<std::sync::mpsc::Receiver<Result<(String, std::path::PathBuf), String>>>,
 }
 
 impl RustyQrApp {
@@ -191,6 +195,10 @@ impl RustyQrApp {
             work_dir,
             lang_error,
             show_lang_settings: false,
+            remote_langs: Vec::new(),
+            lang_remote_fetch_status: None,
+            lang_remote_fetch_rx: None,
+            lang_download_rx: None,
         }
     }
 
@@ -249,6 +257,58 @@ impl eframe::App for RustyQrApp {
                     }
                     Err(e) => {
                         self.logo_dl_status = Some((false, format!("\u{2717} {e}")));
+                    }
+                }
+            }
+        }
+
+        if self.lang_remote_fetch_rx.is_some() || self.lang_download_rx.is_some() {
+            ctx.request_repaint_after(std::time::Duration::from_millis(80));
+        }
+
+        if let Some(rx) = &self.lang_remote_fetch_rx {
+            if let Ok(result) = rx.try_recv() {
+                self.lang_remote_fetch_rx = None;
+                self.lang_remote_fetch_status = Some(match result {
+                    Ok(list) => {
+                        let count = list.len();
+                        self.remote_langs = list;
+                        (true, format!("\u{1F7E2} GitHub — {count} langue(s) repo"))
+                    }
+                    Err(e) => {
+                        self.remote_langs.clear();
+                        let offline = e.to_lowercase().contains("dns")
+                            || e.to_lowercase().contains("connect")
+                            || e.to_lowercase().contains("timeout")
+                            || e.to_lowercase().contains("network")
+                            || e.to_lowercase().contains("refused");
+                        let msg = if offline {
+                            "\u{1F534} Hors-ligne — langues locales uniquement".into()
+                        } else {
+                            format!("\u{26A0} GitHub : {e}")
+                        };
+                        (false, msg)
+                    }
+                });
+            }
+        }
+
+        if let Some(rx) = &self.lang_download_rx {
+            if let Ok(result) = rx.try_recv() {
+                self.lang_download_rx = None;
+                match result {
+                    Ok((stem, path)) => match crate::lang::Lang::load_file(&path) {
+                        Ok(new_lang) => {
+                            crate::lang::Lang::save_choice(&self.work_dir, &stem);
+                            self.lang = new_lang;
+                            self.lang_remote_fetch_status = Some((true, format!("\u{2B07} Langue install\u{E9}e : {stem}")));
+                        }
+                        Err(e) => {
+                            self.lang_remote_fetch_status = Some((false, format!("\u{2717} Chargement langue : {e}")));
+                        }
+                    },
+                    Err(e) => {
+                        self.lang_remote_fetch_status = Some((false, format!("\u{2717} T\u{E9}l\u{E9}chargement langue : {e}")));
                     }
                 }
             }
@@ -533,12 +593,22 @@ impl eframe::App for RustyQrApp {
 
         // ── Modal "Langue" (sélection + liste) ───────────────────────────────
         if self.show_lang_settings {
+            if self.lang_remote_fetch_rx.is_none()
+                && self.lang_remote_fetch_status.is_none()
+                && self.remote_langs.is_empty()
+            {
+                trigger_remote_lang_fetch(self);
+            }
+
             // Prépare toutes les données AVANT la closure pour éviter les conflits d'emprunt
-            let lang_infos    = crate::lang::Lang::list_available(&self.work_dir);
+            let lang_infos    = crate::lang::Lang::list_available(&self.work_dir, &self.remote_langs);
             let lang_dir_path = self.work_dir.join("lang")
                 .to_string_lossy().into_owned();
             let active_stem   = self.lang.active_stem.clone();
             let work_dir      = self.work_dir.clone();
+            let remote_status = self.lang_remote_fetch_status.clone();
+            let fetching_langs = self.lang_remote_fetch_rx.is_some();
+            let downloading_lang = self.lang_download_rx.is_some();
 
             let lp_title     = self.lang.t("lang_page.title");
             let lp_active    = self.lang.t("lang_page.active_label");
@@ -548,6 +618,18 @@ impl eframe::App for RustyQrApp {
             let lp_open      = self.lang.t("lang_page.open_folder_btn");
             let lp_close     = self.lang.t("lang_page.close_button");
             let lp_no_files  = self.lang.t("lang_page.no_files");
+            let lp_reload    = {
+                let s = self.lang.t("lang_page.reload_btn");
+                if s == "lang_page.reload_btn" { "Refresh".into() } else { s }
+            };
+            let lp_local     = {
+                let s = self.lang.t("lang_page.local_badge");
+                if s == "lang_page.local_badge" { "[local]".into() } else { s }
+            };
+            let lp_repo      = {
+                let s = self.lang.t("lang_page.repo_badge");
+                if s == "lang_page.repo_badge" { "[repo]".into() } else { s }
+            };
 
             // Nom d'affichage de la langue active
             let active_display = lang_infos.iter()
@@ -556,12 +638,14 @@ impl eframe::App for RustyQrApp {
                 .unwrap_or_else(|| if active_stem.is_empty() { "—".into() } else { active_stem.clone() });
 
             let mut close      = false;
-            let mut selected: Option<(String, std::path::PathBuf)> = None;
+            let mut selected_local: Option<(String, std::path::PathBuf)> = None;
+            let mut selected_remote: Option<RemoteLangInfo> = None;
+            let mut reload_requested = false;
 
             egui::Window::new(lp_title)
                 .collapsible(false)
                 .resizable(false)
-                .fixed_size([420.0, 300.0])
+                .fixed_size([460.0, 360.0])
                 .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
                 .show(ctx, |ui| {
                     // ── Langue active ────────────────────────────────────────
@@ -574,11 +658,26 @@ impl eframe::App for RustyQrApp {
                     ui.separator();
                     ui.add_space(4.0);
 
+                    if let Some((ok, msg)) = &remote_status {
+                        let color = if *ok {
+                            egui::Color32::from_rgb(30, 120, 50)
+                        } else {
+                            egui::Color32::from_rgb(160, 50, 45)
+                        };
+                        ui.colored_label(color, msg);
+                        ui.add_space(4.0);
+                    }
+
                     // ── Liste des fichiers disponibles ───────────────────────
-                    ui.label(egui::RichText::new(&lp_available).weak().small());
+                    ui.horizontal(|ui| {
+                        ui.label(egui::RichText::new(&lp_available).weak().small());
+                        if ui.small_button(&lp_reload).clicked() && !fetching_langs && !downloading_lang {
+                            reload_requested = true;
+                        }
+                    });
                     ui.add_space(4.0);
 
-                    let list_height = 160.0;
+                    let list_height = 200.0;
                     egui::ScrollArea::vertical()
                         .max_height(list_height)
                         .id_source("lang_list")
@@ -589,13 +688,27 @@ impl eframe::App for RustyQrApp {
                             } else {
                                 for info in &lang_infos {
                                     let is_active = info.stem == active_stem;
-                                    let label = if info.is_default {
-                                        format!("{}  {}", info.display, lp_badge)
-                                    } else {
-                                        info.display.clone()
-                                    };
-                                    if ui.selectable_label(is_active, label).clicked() && !is_active {
-                                        selected = Some((info.stem.clone(), info.path.clone()));
+                                    let mut parts = vec![info.display.clone()];
+                                    if info.is_default {
+                                        parts.push(lp_badge.clone());
+                                    }
+                                    if info.is_local {
+                                        parts.push(lp_local.clone());
+                                    }
+                                    if info.is_remote {
+                                        parts.push(lp_repo.clone());
+                                    }
+                                    let label = parts.join("  ");
+                                    let clicked = ui.selectable_label(is_active, label).clicked();
+                                    if clicked && !is_active {
+                                        if let Some(path) = &info.path {
+                                            selected_local = Some((info.stem.clone(), path.clone()));
+                                        } else if let Some(url) = &info.remote_url {
+                                            selected_remote = Some(RemoteLangInfo {
+                                                stem: info.stem.clone(),
+                                                download_url: url.clone(),
+                                            });
+                                        }
                                     }
                                 }
                             }
@@ -626,10 +739,28 @@ impl eframe::App for RustyQrApp {
                 });
 
             // Applique la sélection (après la closure, emprunts libérés)
-            if let Some((stem, path)) = selected {
+            if reload_requested {
+                self.remote_langs.clear();
+                trigger_remote_lang_fetch(self);
+            }
+            if let Some((stem, path)) = selected_local {
                 if let Ok(new_lang) = crate::lang::Lang::load_file(&path) {
                     crate::lang::Lang::save_choice(&self.work_dir, &stem);
                     self.lang = new_lang;
+                }
+            }
+            if let Some(info) = selected_remote {
+                if self.lang_download_rx.is_none() {
+                    let work_dir = self.work_dir.clone();
+                    let stem = info.stem.clone();
+                    let (tx, rx) = std::sync::mpsc::channel();
+                    std::thread::spawn(move || {
+                        let result = crate::lang::Lang::download_to_lang_dir(&work_dir, &info)
+                            .map(|path| (stem, path));
+                        let _ = tx.send(result);
+                    });
+                    self.lang_download_rx = Some(rx);
+                    self.lang_remote_fetch_status = Some((true, "T\u{E9}l\u{E9}chargement de la langue…".into()));
                 }
             }
             if close { self.show_lang_settings = false; }
@@ -748,4 +879,16 @@ fn setup_fonts(ctx: &egui::Context) {
     if loaded {
         ctx.set_fonts(fonts);
     }
+}
+
+fn trigger_remote_lang_fetch(app: &mut RustyQrApp) {
+    if app.lang_remote_fetch_rx.is_some() {
+        return;
+    }
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let _ = tx.send(crate::lang::Lang::fetch_remote_index());
+    });
+    app.lang_remote_fetch_rx = Some(rx);
+    app.lang_remote_fetch_status = Some((true, "V\u{E9}rification GitHub des langues…".into()));
 }
