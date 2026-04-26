@@ -39,17 +39,18 @@ repo_label        = "Repository:"
 close_button      = "  Schließen  "
 
 [lang_page]
-title           = "Language / Langue / Sprache"
+title           = "Langue / Language"
 active_label    = "Aktiv:"
 available_label = "Verfügbare Dateien:"
 default_badge   = "[Standard]"
 local_badge     = "[lokal]"
 repo_badge      = "[repo]"
-folder_label    = "Ordner:"
+folder_label    = "Lokaler Sprachordner:"
 open_folder_btn = "Öffnen"
 close_button    = "  Schließen  "
 no_files        = "Keine Sprachdatei in diesem Ordner gefunden."
 reload_btn      = "Aktualisieren"
+reload_git_btn  = "Git aktualisieren"
 
 [errors]
 no_internet = "Dieses Programm benötigt Internetzugang\num seine Sprachressourcen herunterzuladen."

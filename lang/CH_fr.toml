@@ -39,15 +39,18 @@ repo_label        = "Dépôt :"
 close_button      = "  Fermer  "
 
 [lang_page]
-title           = "Language / Langue"
+title           = "Langue / Language"
 active_label    = "Active :"
 available_label = "Fichiers disponibles :"
 default_badge   = "[défaut]"
-folder_label    = "Dossier :"
+local_badge     = "[local]"
+repo_badge      = "[repo]"
+folder_label    = "Dossier local des langues :"
 open_folder_btn = "Ouvrir"
 close_button    = "  Fermer  "
 no_files        = "Aucun fichier de langue trouvé dans ce dossier."
 reload_btn      = "Actualiser"
+reload_git_btn  = "Actualiser Git"
 
 [errors]
 no_internet = "Ce programme a besoin d'un accès internet\npour télécharger ses ressources linguistiques."

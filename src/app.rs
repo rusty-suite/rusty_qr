@@ -619,8 +619,12 @@ impl eframe::App for RustyQrApp {
             let lp_close     = self.lang.t("lang_page.close_button");
             let lp_no_files  = self.lang.t("lang_page.no_files");
             let lp_reload    = {
-                let s = self.lang.t("lang_page.reload_btn");
-                if s == "lang_page.reload_btn" { "Refresh".into() } else { s }
+                let s = self.lang.t("lang_page.reload_git_btn");
+                if s == "lang_page.reload_git_btn" {
+                    "Refresh Git".into()
+                } else {
+                    s
+                }
             };
             let lp_local     = {
                 let s = self.lang.t("lang_page.local_badge");
@@ -645,7 +649,7 @@ impl eframe::App for RustyQrApp {
             egui::Window::new(lp_title)
                 .collapsible(false)
                 .resizable(false)
-                .fixed_size([460.0, 360.0])
+                .fixed_size([688.0, 548.0])
                 .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
                 .show(ctx, |ui| {
                     // ── Langue active ────────────────────────────────────────
@@ -662,18 +666,23 @@ impl eframe::App for RustyQrApp {
                         });
                     });
                     ui.add_space(6.0);
-                    ui.separator();
-                    ui.add_space(4.0);
+                    ui.add_space(6.0);
 
                     if let Some((ok, msg)) = &remote_status {
                         let color = if *ok {
-                            egui::Color32::from_rgb(30, 120, 50)
+                            egui::Color32::from_rgb(86, 201, 110)
                         } else {
-                            egui::Color32::from_rgb(160, 50, 45)
+                            egui::Color32::from_rgb(220, 90, 90)
                         };
-                        ui.colored_label(color, msg);
-                        ui.add_space(4.0);
+                        ui.horizontal(|ui| {
+                            ui.colored_label(color, "●");
+                            ui.colored_label(color, msg);
+                        });
+                        ui.add_space(8.0);
                     }
+
+                    ui.separator();
+                    ui.add_space(8.0);
 
                     // ── Liste des fichiers disponibles ───────────────────────
                     ui.horizontal(|ui| {
@@ -684,7 +693,7 @@ impl eframe::App for RustyQrApp {
                     });
                     ui.add_space(4.0);
 
-                    let list_height = 200.0;
+                    let list_height = 234.0;
                     egui::ScrollArea::vertical()
                         .max_height(list_height)
                         .id_source("lang_list")
@@ -707,7 +716,28 @@ impl eframe::App for RustyQrApp {
                                     }
                                     parts.push(crate::lang::Lang::stem_compact_code(&info.stem));
                                     let label = parts.join("  ");
-                                    let clicked = ui.selectable_label(is_active, label).clicked();
+                                    let width = ui.available_width();
+                                    let fill = if is_active {
+                                        egui::Color32::from_rgb(0, 105, 148)
+                                    } else {
+                                        egui::Color32::from_rgb(66, 66, 66)
+                                    };
+                                    let stroke = if is_active {
+                                        egui::Stroke::new(1.0, egui::Color32::from_rgb(0, 120, 170))
+                                    } else {
+                                        egui::Stroke::new(1.0, egui::Color32::from_rgb(72, 72, 72))
+                                    };
+                                    let text = if is_active {
+                                        egui::RichText::new(label).color(egui::Color32::WHITE)
+                                    } else {
+                                        egui::RichText::new(label).color(egui::Color32::from_gray(210))
+                                    };
+                                    let button = egui::Button::new(text)
+                                        .min_size(egui::vec2(width, 28.0))
+                                        .fill(fill)
+                                        .stroke(stroke)
+                                        .rounding(egui::Rounding::same(3.0));
+                                    let clicked = ui.add(button).clicked();
                                     if clicked && !is_active {
                                         if let Some(path) = &info.path {
                                             selected_local = Some((info.stem.clone(), path.clone()));
@@ -718,13 +748,15 @@ impl eframe::App for RustyQrApp {
                                             });
                                         }
                                     }
+                                    ui.add_space(4.0);
                                 }
                             }
                         });
 
-                    ui.add_space(6.0);
+                    ui.add_space(12.0);
+                    ui.allocate_space(egui::vec2(1.0, 48.0));
                     ui.separator();
-                    ui.add_space(4.0);
+                    ui.add_space(10.0);
 
                     // ── Dossier + bouton ouvrir ──────────────────────────────
                     ui.horizontal(|ui| {
@@ -738,7 +770,9 @@ impl eframe::App for RustyQrApp {
                         }
                     });
 
-                    ui.add_space(6.0);
+                    ui.add_space(10.0);
+                    ui.separator();
+                    ui.add_space(8.0);
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         ui.add_space(4.0);
                         if ui.button(&lp_close).clicked() { close = true; }
