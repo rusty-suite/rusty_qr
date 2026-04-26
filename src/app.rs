@@ -8,6 +8,62 @@ use crate::style::{profile::{StyleProfile, load_profiles, save_profiles}, render
 use crate::template::{RemoteTemplate, TemplateColor, TemplateField};
 use crate::ui;
 
+// ─── App theme ───────────────────────────────────────────────────────────────
+
+#[derive(Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize, Default)]
+pub enum AppTheme {
+    #[default]
+    System,
+    Light,
+    Dark,
+}
+
+impl AppTheme {
+    fn cycle(self) -> Self {
+        match self {
+            AppTheme::System => AppTheme::Light,
+            AppTheme::Light  => AppTheme::Dark,
+            AppTheme::Dark   => AppTheme::System,
+        }
+    }
+    fn icon(self) -> &'static str {
+        match self {
+            AppTheme::System => "\u{1F4BB}", // 💻
+            AppTheme::Light  => "\u{2600}",  // ☀
+            AppTheme::Dark   => "\u{1F319}", // 🌙
+        }
+    }
+    fn tooltip(self) -> &'static str {
+        match self {
+            AppTheme::System => "Thème système — cliquer pour Clair",
+            AppTheme::Light  => "Thème Clair — cliquer pour Sombre",
+            AppTheme::Dark   => "Thème Sombre — cliquer pour Système",
+        }
+    }
+}
+
+fn theme_path() -> std::path::PathBuf {
+    let base = dirs::config_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
+    let dir  = base.join("rusty_qr");
+    let _    = std::fs::create_dir_all(&dir);
+    dir.join("theme.json")
+}
+
+pub fn load_theme() -> AppTheme {
+    std::fs::read_to_string(theme_path())
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_default()
+}
+
+pub fn save_theme(theme: AppTheme) {
+    if let Ok(json) = serde_json::to_string(&theme) {
+        let _ = std::fs::write(theme_path(), json);
+    }
+}
+
+// ─── Tabs ────────────────────────────────────────────────────────────────────
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Tab {
     Creator,
@@ -76,6 +132,9 @@ pub struct RustyQrApp {
     pub remote_fetch_status: Option<(bool, String)>,
     pub remote_fetch_rx: Option<std::sync::mpsc::Receiver<Result<Vec<RemoteTemplate>, String>>>,
     pub remote_svg_dl: Option<(usize, std::sync::mpsc::Receiver<Result<String, String>>)>,
+
+    // ── Thème de l'interface ──────────────────────────────────────────────────
+    pub app_theme: AppTheme,
 }
 
 impl RustyQrApp {
@@ -117,6 +176,7 @@ impl RustyQrApp {
             remote_fetch_status: None,
             remote_fetch_rx: None,
             remote_svg_dl: None,
+            app_theme: load_theme(),
         }
     }
 
@@ -152,7 +212,12 @@ impl RustyQrApp {
 
 impl eframe::App for RustyQrApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        ctx.set_visuals(egui::Visuals::dark());
+        // Apply theme — System = follow eframe/OS, otherwise override
+        match self.app_theme {
+            AppTheme::Dark   => ctx.set_visuals(egui::Visuals::dark()),
+            AppTheme::Light  => ctx.set_visuals(egui::Visuals::light()),
+            AppTheme::System => {} // laisser eframe suivre le thème OS
+        }
 
         // ── Poll logo URL download ────────────────────────────────────────────
         if let Some(rx) = &self.logo_dl_rx {
@@ -336,8 +401,20 @@ impl eframe::App for RustyQrApp {
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     ui.add_space(4.0);
-                    if ui.add(egui::Button::new("\u{2699}").frame(false)).on_hover_text("\u{00C0} propos").clicked() {
+                    if ui.add(egui::Button::new("\u{2699}").frame(false))
+                        .on_hover_text("\u{00C0} propos")
+                        .clicked()
+                    {
                         self.show_about = true;
+                    }
+                    ui.add_space(4.0);
+                    // Theme toggle button
+                    if ui.add(egui::Button::new(self.app_theme.icon()).frame(false))
+                        .on_hover_text(self.app_theme.tooltip())
+                        .clicked()
+                    {
+                        self.app_theme = self.app_theme.cycle();
+                        save_theme(self.app_theme);
                     }
                 });
             });

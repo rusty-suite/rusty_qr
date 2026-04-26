@@ -1,3 +1,5 @@
+#![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
+
 mod app;
 mod card;
 mod export;
@@ -16,6 +18,7 @@ fn main() -> eframe::Result<()> {
             .with_min_inner_size([900.0, 600.0])
             .with_title("RustyQR — Générateur de codes QR")
             .with_icon(logo::icon_data()),
+        follow_system_theme: true,
         ..Default::default()
     };
     eframe::run_native(
