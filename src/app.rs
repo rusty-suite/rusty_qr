@@ -651,8 +651,15 @@ impl eframe::App for RustyQrApp {
                     // ── Langue active ────────────────────────────────────────
                     ui.add_space(4.0);
                     ui.horizontal(|ui| {
-                        ui.label(egui::RichText::new(&lp_active).weak());
-                        ui.label(egui::RichText::new(&active_display).strong());
+                        ui.vertical(|ui| {
+                            ui.label(egui::RichText::new(&lp_active).weak());
+                            ui.label(egui::RichText::new(&active_display).strong());
+                        });
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
+                            if ui.small_button("✕").on_hover_text(&lp_close).clicked() {
+                                close = true;
+                            }
+                        });
                     });
                     ui.add_space(6.0);
                     ui.separator();
