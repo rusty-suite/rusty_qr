@@ -3,6 +3,7 @@
 # This file is fetched automatically on first run if no lang/ files are found.
 
 [app]
+lang_name   = "English (EN)"
 title       = "RustyQR — QR Code Generator"
 version     = "v1.0.0"
 author      = "rusty-suite"
@@ -17,12 +18,13 @@ light   = "Light theme — click for Dark"
 dark    = "Dark theme — click for System"
 
 [nav]
-create       = "\U0001F4C4 Create QR"
-profiles     = "\U0001F3A8 Style Profiles"
-library      = "\U0001F4DA Library"
+create        = "\U0001F4C4 Create QR"
+profiles      = "\U0001F3A8 Style Profiles"
+library       = "\U0001F4DA Library"
 card_designer = "\U0001F5FA Card Designer"
-export       = "\U0001F4BE Export"
+export        = "\U0001F4BE Export"
 active_profile = "Active profile"
+lang_settings = "Language settings"
 
 [sidebar]
 saved_single = "1 saved entry"
@@ -37,7 +39,17 @@ license_label     = "License:"
 description_label = "Description:"
 repo_label        = "Repository:"
 close_button      = "  Close  "
-settings_button   = "  ⚙  "
+
+[lang_page]
+title           = "Language / Langue"
+active_label    = "Active:"
+available_label = "Available files:"
+default_badge   = "[default]"
+folder_label    = "Folder:"
+open_folder_btn = "Open"
+close_button    = "  Close  "
+no_files        = "No language file found in this folder."
+reload_btn      = "Refresh"
 
 [errors]
 no_internet = "This program needs internet access\nto download its language resources."
