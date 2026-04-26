@@ -23,6 +23,10 @@ dirs = "5"
 ureq  = { version = "2", features = ["json"] }
 resvg = { version = "0.47", default-features = false, features = ["text", "system-fonts", "raster-images"] }
 
+[build-dependencies]
+image = { version = "0.24", default-features = false, features = ["png"] }
+winresource = "0.1"
+
 [profile.release]
 opt-level = 3
 strip = true
