@@ -323,6 +323,11 @@ fn show_template_selector(app: &mut RustyQrApp, ui: &mut Ui) -> bool {
             }
         });
 
+    // ── Auto-trigger remote index fetch on first visit ───────────────────
+    if app.remote_fetch_rx.is_none() && app.remote_fetch_status.is_none() {
+        trigger_remote_fetch(app);
+    }
+
     ui.add_space(4.0);
     ui.horizontal(|ui| {
         // Load custom SVG file
@@ -344,30 +349,44 @@ fn show_template_selector(app: &mut RustyQrApp, ui: &mut Ui) -> bool {
             }
         }
 
-        // Refresh remote template list from GitHub
+        // Manual refresh button
         let fetching = app.remote_fetch_rx.is_some();
         let btn_label = if fetching { "\u{23F3}" } else { "\u{1F504}" };
-        let btn = ui.add_enabled(
-            !fetching,
-            egui::Button::new(btn_label),
-        ).on_hover_text("Actualiser les thèmes GitHub");
-        if btn.clicked() {
-            let (tx, rx) = std::sync::mpsc::channel();
-            std::thread::spawn(move || {
-                let _ = tx.send(crate::template::fetch_remote_index());
-            });
-            app.remote_fetch_rx = Some(rx);
-            app.remote_fetch_status = Some((true, "Connexion à GitHub…".into()));
+        if ui.add_enabled(!fetching, egui::Button::new(btn_label))
+            .on_hover_text("Revérifier les thèmes GitHub")
+            .clicked()
+        {
+            // Reset so we can fetch again even if already done
+            app.remote_templates.clear();
+            trigger_remote_fetch(app);
         }
     });
 
-    // Remote status message
+    // ── Connectivity / remote status strip ───────────────────────────────
     if let Some((ok, msg)) = &app.remote_fetch_status {
         ui.add_space(2.0);
-        if *ok { theme::hint(ui, msg); } else { theme::status_err(ui, msg); }
+        let fetching = app.remote_fetch_rx.is_some();
+        if fetching {
+            theme::hint(ui, &format!("\u{23F3} {msg}"));
+        } else if *ok {
+            ui.label(egui::RichText::new(msg).small()
+                .color(egui::Color32::from_rgb(80, 200, 120)));
+        } else {
+            ui.label(egui::RichText::new(msg).small()
+                .color(egui::Color32::from_rgb(220, 100, 60)));
+        }
     }
 
     changed
+}
+
+fn trigger_remote_fetch(app: &mut RustyQrApp) {
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let _ = tx.send(crate::template::fetch_remote_index());
+    });
+    app.remote_fetch_rx = Some(rx);
+    app.remote_fetch_status = Some((true, "V\u{E9}rification en ligne\u{2026}".into()));
 }
 
 /// Apply a template selection: update index, detect fields + colors, mark preview dirty.

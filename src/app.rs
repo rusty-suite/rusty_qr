@@ -176,33 +176,87 @@ impl eframe::App for RustyQrApp {
         }
 
         // ── Poll background template fetches ─────────────────────────────────
-        if self.remote_fetch_rx.is_some() {
+        let fetching_index = self.remote_fetch_rx.is_some();
+        let fetching_svg   = self.remote_svg_dl.is_some();
+        if fetching_index || fetching_svg {
+            // Keep repainting so we notice when the thread completes
+            ctx.request_repaint_after(std::time::Duration::from_millis(80));
+        }
+
+        if fetching_index {
             let done = self.remote_fetch_rx.as_ref()
                 .and_then(|rx| rx.try_recv().ok());
             if let Some(result) = done {
                 self.remote_fetch_status = Some(match result {
                     Ok(list) => {
-                        let n = list.len();
-                        self.remote_templates = list;
-                        (true, format!("\u{2713} {n} th\u{E8}me(s) charg\u{E9}(s) depuis GitHub"))
+                        // Keep only themes not already compiled into BUILTIN
+                        let extras: Vec<_> = list.into_iter()
+                            .filter(|t| !crate::template::is_builtin_id(&t.id))
+                            .collect();
+                        let n = extras.len();
+                        self.remote_templates = extras;
+                        if n == 0 {
+                            (true, "\u{1F7E2} En ligne \u{2014} aucun th\u{E8}me suppl\u{E9}mentaire".into())
+                        } else {
+                            (true, format!("\u{1F7E2} En ligne \u{2014} {n} th\u{E8}me(s) suppl\u{E9}mentaire(s)"))
+                        }
                     }
-                    Err(e) => (false, format!("\u{2717} {e}")),
+                    Err(e) => {
+                        let offline = e.to_lowercase().contains("dns")
+                            || e.to_lowercase().contains("connect")
+                            || e.to_lowercase().contains("timeout")
+                            || e.to_lowercase().contains("network")
+                            || e.to_lowercase().contains("refused");
+                        let msg = if offline {
+                            "\u{1F534} Hors-ligne \u{2014} th\u{E8}mes int\u{E9}gr\u{E9}s uniquement".into()
+                        } else {
+                            format!("\u{26A0} GitHub : {e}")
+                        };
+                        (false, msg)
+                    }
                 });
                 self.remote_fetch_rx = None;
             }
         }
-        if self.remote_svg_dl.is_some() {
+
+        if fetching_svg {
             let done = self.remote_svg_dl.as_ref()
                 .and_then(|(idx, rx)| rx.try_recv().ok().map(|r| (*idx, r)));
             if let Some((idx, result)) = done {
                 self.remote_fetch_status = Some(match result {
                     Ok(svg) => {
                         if let Some(t) = self.remote_templates.get_mut(idx) {
-                            t.svg = Some(svg);
+                            t.svg = Some(svg.clone());
                         }
-                        (true, "T\u{E9}l\u{E9}charg\u{E9} \u{2713}".into())
+                        // Re-apply palette + field detection now that the SVG is ready
+                        let rb = crate::template::BUILTIN.len() + 2;
+                        let selected_remote_idx = self.selected_template_idx.saturating_sub(rb);
+                        if self.selected_template_idx >= rb && selected_remote_idx == idx {
+                            let (bg, fg, ac) = crate::template::detect_palette_defaults(&svg);
+                            if let Some(c) = bg { self.card.bg_color     = c; }
+                            if let Some(c) = fg { self.card.text_color   = c; }
+                            if let Some(c) = ac { self.card.accent_color = c; }
+                            let labels   = self.card.layout.field_labels();
+                            let detected = crate::template::detect_fields(&svg, labels);
+                            let old_f    = std::mem::replace(&mut self.template_field_data, detected);
+                            for tf in &mut self.template_field_data {
+                                if let Some(prev) = old_f.iter().find(|o| o.var == tf.var) {
+                                    tf.value   = prev.value.clone();
+                                    tf.visible = prev.visible;
+                                }
+                            }
+                            let detected_c = crate::template::detect_colors(&svg);
+                            let old_c      = std::mem::replace(&mut self.template_color_data, detected_c);
+                            for tc in &mut self.template_color_data {
+                                if let Some(prev) = old_c.iter().find(|o| o.var == tc.var) {
+                                    tc.value = prev.value;
+                                }
+                            }
+                        }
+                        self.template_preview_dirty = true;
+                        (true, "\u{2B07} Th\u{E8}me t\u{E9}l\u{E9}charg\u{E9} \u{2713}".into())
                     }
-                    Err(e) => (false, format!("\u{2717} {e}")),
+                    Err(e) => (false, format!("\u{2717} T\u{E9}l\u{E9}chargement : {e}")),
                 });
                 self.remote_svg_dl = None;
             }

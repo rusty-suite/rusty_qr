@@ -2,25 +2,120 @@
   {
     "id": "classic",
     "name": "Classique",
-    "description": "Fond blanc avec bordure fine, mise en page professionnelle",
-    "file": "classic.svg"
+    "description": "Fond blanc avec bordure, texte organisé par le thème",
+    "file": "classic.svg",
+    "builtin": true
   },
   {
     "id": "dark",
     "name": "Sombre",
-    "description": "Fond sombre avec halo d'accent et bordure colorée",
-    "file": "dark.svg"
+    "description": "Fond sombre, halo d'accent, texte clair",
+    "file": "dark.svg",
+    "builtin": true
   },
   {
     "id": "minimal",
     "name": "Minimal",
-    "description": "Fond uni sans décoration, typographie épurée",
-    "file": "minimal.svg"
+    "description": "Fond uni, aucune décoration, typographie épurée",
+    "file": "minimal.svg",
+    "builtin": true
   },
   {
     "id": "badge",
     "name": "Badge",
-    "description": "Liseré latéral coloré, style badge / accréditation",
-    "file": "badge.svg"
+    "description": "Liseré coloré, style accréditation / badge",
+    "file": "badge.svg",
+    "builtin": true
+  },
+  {
+    "id": "modern",
+    "name": "Épuré Pro",
+    "description": "Bandeau dégradé, coins arrondis, palette personnalisable",
+    "file": "modern.svg",
+    "builtin": true
+  },
+  {
+    "id": "neon",
+    "name": "Néon",
+    "description": "Fond sombre, bordure et texte lumineux style néon",
+    "file": "neon.svg",
+    "builtin": true
+  },
+  {
+    "id": "gradient",
+    "name": "Dégradé",
+    "description": "Panneau gauche en dégradé, zone texte claire à droite",
+    "file": "gradient.svg",
+    "builtin": true
+  },
+  {
+    "id": "retro",
+    "name": "Rétro Vintage",
+    "description": "Papier crème, bordure perforée, typographie séri chaleureuse",
+    "file": "retro.svg",
+    "builtin": true
+  },
+  {
+    "id": "aurora",
+    "name": "Aurore Boréale",
+    "description": "Ciel nocturne, nappes aurora violet–turquoise, étoiles",
+    "file": "aurora.svg",
+    "builtin": true
+  },
+  {
+    "id": "swiss",
+    "name": "Design Suisse",
+    "description": "Style typographique international, rouge vif, grille stricte",
+    "file": "swiss.svg",
+    "builtin": true
+  },
+  {
+    "id": "glass",
+    "name": "Verre Givré",
+    "description": "Glassmorphisme : fond coloré, panneau translucide givré",
+    "file": "glass.svg",
+    "builtin": true
+  },
+  {
+    "id": "zen",
+    "name": "Zen / Sumi-e",
+    "description": "Esthétique japonaise : papier washi, coup de pinceau, sceau rouge",
+    "file": "zen.svg",
+    "builtin": true
+  },
+  {
+    "id": "cyber",
+    "name": "Cyberpunk",
+    "description": "Fond noir, jaune électrique, lignes de scan, terminal monospace",
+    "file": "cyber.svg",
+    "builtin": true
+  },
+  {
+    "id": "artdeco",
+    "name": "Art Déco",
+    "description": "Fond sombre riche, ornements géométriques dorés, élégance 1920",
+    "file": "artdeco.svg",
+    "builtin": true
+  },
+  {
+    "id": "brutal",
+    "name": "Brutaliste",
+    "description": "Blanc–noir pur, bordure épaisse, ombre portée décalée, accent rouge",
+    "file": "brutal.svg",
+    "builtin": true
+  },
+  {
+    "id": "nordic",
+    "name": "Scandinave",
+    "description": "Bleu-gris doux, formes organiques, vert forêt, harmonie naturelle",
+    "file": "nordic.svg",
+    "builtin": true
+  },
+  {
+    "id": "isometric",
+    "name": "Tech Isométrique",
+    "description": "Navy profond, grille isométrique cyan, interface données futuriste",
+    "file": "isometric.svg",
+    "builtin": true
   }
 ]
