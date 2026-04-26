@@ -1,0 +1,54 @@
+# CH_de.toml — Sprachdatei Deutsch (Schweiz)
+
+[app]
+lang_name   = "Deutsch (CH)"
+title       = "RustyQR — QR-Code-Generator"
+version     = "v1.0.0"
+author      = "rusty-suite"
+license     = "PolyForm-Noncommercial"
+description = "Mehrformat-QR-Code-Generator\nmit Stilprofilen und Vektorexport."
+repo_display = "github.com/rusty-suite/rusty_qr"
+repo_url    = "https://github.com/rusty-suite/rusty_qr"
+
+[theme]
+system  = "Systemdesign — Klick für Hell"
+light   = "Helles Design — Klick für Dunkel"
+dark    = "Dunkles Design — Klick für System"
+
+[nav]
+create        = "\U0001F4C4 QR erstellen"
+profiles      = "\U0001F3A8 Stilprofile"
+library       = "\U0001F4DA Bibliothek"
+card_designer = "\U0001F5FA Karten-Designer"
+export        = "\U0001F4BE Exportieren"
+active_profile = "Aktives Profil"
+lang_settings = "Spracheinstellungen"
+
+[sidebar]
+saved_single = "1 gespeicherter Eintrag"
+saved_plural = "{n} gespeicherte Einträge"
+
+[about]
+window_title      = "Über RustyQR"
+app_label         = "Anwendung:"
+version_label     = "Version:"
+author_label      = "Autor:"
+license_label     = "Lizenz:"
+description_label = "Beschreibung:"
+repo_label        = "Repository:"
+close_button      = "  Schließen  "
+
+[lang_page]
+title           = "Language / Langue / Sprache"
+active_label    = "Aktiv:"
+available_label = "Verfügbare Dateien:"
+default_badge   = "[Standard]"
+folder_label    = "Ordner:"
+open_folder_btn = "Öffnen"
+close_button    = "  Schließen  "
+no_files        = "Keine Sprachdatei in diesem Ordner gefunden."
+reload_btn      = "Aktualisieren"
+
+[errors]
+no_internet = "Dieses Programm benötigt Internetzugang\num seine Sprachressourcen herunterzuladen."
+lang_load   = "Fehler: Sprachdatei konnte nicht geladen werden."
