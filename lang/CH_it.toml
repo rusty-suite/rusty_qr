@@ -1,0 +1,54 @@
+# CH_it.toml — File lingua Italiano (Svizzera)
+
+[app]
+lang_name   = "Italiano (CH)"
+title       = "RustyQR — Generatore di codici QR"
+version     = "v1.0.0"
+author      = "rusty-suite"
+license     = "PolyForm-Noncommercial"
+description = "Generatore di codici QR multi-formato\ncon profili di stile ed esportazione vettoriale."
+repo_display = "github.com/rusty-suite/rusty_qr"
+repo_url    = "https://github.com/rusty-suite/rusty_qr"
+
+[theme]
+system  = "Tema di sistema — clic per Chiaro"
+light   = "Tema Chiaro — clic per Scuro"
+dark    = "Tema Scuro — clic per Sistema"
+
+[nav]
+create        = "\U0001F4C4 Crea QR"
+profiles      = "\U0001F3A8 Profili di stile"
+library       = "\U0001F4DA Libreria"
+card_designer = "\U0001F5FA Designer di carte"
+export        = "\U0001F4BE Esporta"
+active_profile = "Profilo attivo"
+lang_settings = "Impostazioni lingua"
+
+[sidebar]
+saved_single = "1 voce salvata"
+saved_plural = "{n} voci salvate"
+
+[about]
+window_title      = "Informazioni su RustyQR"
+app_label         = "Applicazione:"
+version_label     = "Versione:"
+author_label      = "Autore:"
+license_label     = "Licenza:"
+description_label = "Descrizione:"
+repo_label        = "Repository:"
+close_button      = "  Chiudi  "
+
+[lang_page]
+title           = "Language / Lingua"
+active_label    = "Attiva:"
+available_label = "File disponibili:"
+default_badge   = "[predefinita]"
+folder_label    = "Cartella:"
+open_folder_btn = "Apri"
+close_button    = "  Chiudi  "
+no_files        = "Nessun file di lingua trovato in questa cartella."
+reload_btn      = "Aggiorna"
+
+[errors]
+no_internet = "Questo programma necessita di accesso a Internet\nper scaricare le risorse linguistiche."
+lang_load   = "Errore: impossibile caricare il file di lingua."

@@ -410,18 +410,20 @@ impl eframe::App for RustyQrApp {
         if self.lang_error.is_some() {
             let err_msg = self.lang_error.clone().unwrap_or_default();
             let mut dismiss = false;
-            egui::Window::new("\u{26A0} Langue")
+            egui::Window::new("\u{26A0} Language / Langue")
                 .collapsible(false)
                 .resizable(false)
+                .fixed_size([360.0, 110.0])
                 .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
                 .show(ctx, |ui| {
-                    ui.add_space(6.0);
+                    ui.add_space(8.0);
                     ui.label(&err_msg);
-                    ui.add_space(10.0);
+                    ui.add_space(12.0);
+                    ui.separator();
+                    ui.add_space(4.0);
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        if ui.button("  OK  ").clicked() {
-                            dismiss = true;
-                        }
+                        ui.add_space(4.0);
+                        if ui.button("  OK  ").clicked() { dismiss = true; }
                     });
                     ui.add_space(4.0);
                 });
