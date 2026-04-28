@@ -130,7 +130,7 @@ fn profile_editor(
     ui.label(egui::RichText::new("Éditer le profil").strong());
     ui.add_space(4.0);
 
-    egui::ScrollArea::vertical().show(ui, |ui| {
+    {
         // ── Nom ──────────────────────────────────────────────────────────────
         egui::Grid::new("prof_base")
             .num_columns(2).spacing([8.0, 6.0])
@@ -380,7 +380,7 @@ fn profile_editor(
             );
         }
 
-    });
+    }
 }
 
 fn color_btn(ui: &mut Ui, c: &mut [u8; 3]) -> bool {

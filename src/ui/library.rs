@@ -25,8 +25,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
     let mut to_delete: Option<u64> = None;
     let mut to_load:   Option<usize> = None;
 
-    egui::ScrollArea::vertical().show(ui, |ui| {
-        for (i, entry) in app.library.iter().enumerate() {
+    for (i, entry) in app.library.iter().enumerate() {
             let is_loaded = app.loaded_library_id == Some(entry.id);
 
             egui::Frame::none()
@@ -92,9 +91,8 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
                     });
                 });
 
-            ui.add_space(4.0);
-        }
-    });
+        ui.add_space(4.0);
+    }
 
     // Apply actions after iteration (borrow rules)
     if let Some(id) = to_delete {

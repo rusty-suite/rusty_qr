@@ -822,52 +822,58 @@ impl eframe::App for RustyQrApp {
             self.lang.t("sidebar.saved_plural").replace("{n}", &count.to_string())
         };
         egui::SidePanel::left("nav").resizable(false).exact_width(190.0).show(ctx, |ui| {
-            ui.add_space(8.0);
-            ui.separator();
-            ui.add_space(4.0);
-
-            nav_btn(ui, &mut self.tab, Tab::Creator,      &nav_create);
-            nav_btn(ui, &mut self.tab, Tab::Profiles,     &nav_profiles);
-            nav_btn(ui, &mut self.tab, Tab::Library,      &nav_library);
-            nav_btn(ui, &mut self.tab, Tab::CardDesigner, &nav_card);
-            nav_btn(ui, &mut self.tab, Tab::Export,       &nav_export);
-
-            ui.add_space(8.0);
-            ui.separator();
-            ui.add_space(4.0);
-
-            // Indicateur bibliothèque
-            if count > 0 {
-                ui.label(egui::RichText::new(&lbl_saved).small().weak());
+            egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
+                ui.add_space(8.0);
+                ui.separator();
                 ui.add_space(4.0);
-            }
 
-            // Profil actif
-            ui.label(egui::RichText::new(&lbl_active_prof).small().weak());
-            ui.add_space(2.0);
-            let names: Vec<String> = self.profiles.iter().map(|p| p.name.clone()).collect();
-            for (i, name) in names.iter().enumerate() {
-                if ui.selectable_label(self.selected_profile == i, name).clicked() {
-                    self.selected_profile = i;
-                    self.mark_qr_dirty();
+                nav_btn(ui, &mut self.tab, Tab::Creator,      &nav_create);
+                nav_btn(ui, &mut self.tab, Tab::Profiles,     &nav_profiles);
+                nav_btn(ui, &mut self.tab, Tab::Library,      &nav_library);
+                nav_btn(ui, &mut self.tab, Tab::CardDesigner, &nav_card);
+                nav_btn(ui, &mut self.tab, Tab::Export,       &nav_export);
+
+                ui.add_space(8.0);
+                ui.separator();
+                ui.add_space(4.0);
+
+                // Indicateur bibliothèque
+                if count > 0 {
+                    ui.label(egui::RichText::new(&lbl_saved).small().weak());
+                    ui.add_space(4.0);
                 }
-            }
+
+                // Profil actif
+                ui.label(egui::RichText::new(&lbl_active_prof).small().weak());
+                ui.add_space(2.0);
+                let names: Vec<String> = self.profiles.iter().map(|p| p.name.clone()).collect();
+                for (i, name) in names.iter().enumerate() {
+                    if ui.selectable_label(self.selected_profile == i, name).clicked() {
+                        self.selected_profile = i;
+                        self.mark_qr_dirty();
+                    }
+                }
+            });
         });
 
         // ── Panneau droit : aperçu QR ────────────────────────────────────────
         egui::SidePanel::right("preview").resizable(true).default_width(300.0).show(ctx, |ui| {
-            ui::preview::show_preview(self, ui, ctx);
+            egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
+                ui::preview::show_preview(self, ui, ctx);
+            });
         });
 
         // ── Zone centrale ────────────────────────────────────────────────────
         egui::CentralPanel::default().show(ctx, |ui| {
-            match self.tab {
-                Tab::Creator      => ui::creator::show(self, ui),
-                Tab::Profiles     => ui::profiles::show(self, ui),
-                Tab::Library      => ui::library::show(self, ui),
-                Tab::CardDesigner => ui::card_designer::show(self, ui),
-                Tab::Export       => ui::export_ui::show(self, ui),
-            }
+            egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
+                match self.tab {
+                    Tab::Creator      => ui::creator::show(self, ui),
+                    Tab::Profiles     => ui::profiles::show(self, ui),
+                    Tab::Library      => ui::library::show(self, ui),
+                    Tab::CardDesigner => ui::card_designer::show(self, ui),
+                    Tab::Export       => ui::export_ui::show(self, ui),
+                }
+            });
         });
     }
 }
