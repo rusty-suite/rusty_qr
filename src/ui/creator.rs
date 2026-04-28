@@ -51,9 +51,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
     ui.add_space(8.0);
 
     // ── Formulaire dynamique ─────────────────────────────────────────────────
-    egui::ScrollArea::vertical().max_height(340.0).show(ui, |ui| {
-        if show_form(app, ui) { changed = true; }
-    });
+    if show_form(app, ui) { changed = true; }
 
     // ── Données encodées (preview) ───────────────────────────────────────────
     let encoded = app.form.to_qr_string();
