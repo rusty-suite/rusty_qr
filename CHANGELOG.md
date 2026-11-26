@@ -25,6 +25,7 @@ et le projet respecte le [Versionnage sémantique](https://semver.org/lang/fr/) 
 ### Corrigé
 - Le panneau de choix de langue restait en français (titre et messages d'état).
 - Orthographe suisse dans CH-de (« ss » au lieu de « ß »).
+- Le bouton « Ouvrir » du dossier des langues fonctionne aussi sous Linux et macOS.
 
 ### Supprimé
 - Ancien export PDF des cartes non utilisé (remplacé par l'export rastérisé).
