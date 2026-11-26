@@ -21,19 +21,20 @@ impl QrContentType {
         Self::Vcard, Self::Mecard, Self::Geo, Self::Gs1, Self::TwoDoc, Self::Text,
     ];
 
-    pub fn label(&self) -> &'static str {
+    /// Translation key of the type name (see `lang/*.toml`, section `qr_type`).
+    pub fn label_key(&self) -> &'static str {
         match self {
-            Self::Url    => "URL",
-            Self::Wifi   => "WiFi",
-            Self::Sms    => "SMS",
-            Self::Tel    => "Téléphone (TEL)",
-            Self::Email  => "Email (MAILTO)",
-            Self::Vcard  => "vCard / MECARD",
-            Self::Mecard => "MECARD",
-            Self::Geo    => "GEO (coordonnées)",
-            Self::Gs1    => "GS1 / FNC1",
-            Self::TwoDoc => "2D-Doc",
-            Self::Text   => "Texte libre",
+            Self::Url    => "qr_type.url",
+            Self::Wifi   => "qr_type.wifi",
+            Self::Sms    => "qr_type.sms",
+            Self::Tel    => "qr_type.tel",
+            Self::Email  => "qr_type.email",
+            Self::Vcard  => "qr_type.vcard",
+            Self::Mecard => "qr_type.mecard",
+            Self::Geo    => "qr_type.geo",
+            Self::Gs1    => "qr_type.gs1",
+            Self::TwoDoc => "qr_type.twodoc",
+            Self::Text   => "qr_type.text",
         }
     }
 }
@@ -42,8 +43,9 @@ impl QrContentType {
 pub enum WifiSecurity { Wpa, Wep, None }
 
 impl WifiSecurity {
-    pub fn label(&self) -> &'static str {
-        match self { Self::Wpa => "WPA/WPA2", Self::Wep => "WEP", Self::None => "Aucune" }
+    /// Translation key of the security mode (section `wifi_security`).
+    pub fn label_key(&self) -> &'static str {
+        match self { Self::Wpa => "wifi_security.wpa", Self::Wep => "wifi_security.wep", Self::None => "wifi_security.none" }
     }
 }
 
@@ -242,21 +244,22 @@ impl QrForm {
     }
 
     /// Human-readable hint for the save-name dialog, WITHOUT sensitive fields (no passwords).
-    pub fn display_name_hint(&self) -> String {
+    /// Suggested library entry name, in the user language.
+    pub fn display_name_hint(&self, lang: &crate::lang::Lang) -> String {
         fn trunc(s: &str, n: usize) -> &str {
             let end = s.char_indices().nth(n).map(|(i,_)| i).unwrap_or(s.len());
             &s[..end]
         }
         match self.content_type {
             QrContentType::Url    => format!("URL \u{2014} {}", trunc(&self.url, 50)),
-            QrContentType::Text   => format!("Texte \u{2014} {}", trunc(&self.text, 40)),
+            QrContentType::Text   => format!("{} \u{2014} {}", lang.t("qr_short.text"), trunc(&self.text, 40)),
             QrContentType::Wifi   => format!("WiFi \u{2014} {}", self.wifi_ssid), // mot de passe exclu
             QrContentType::Sms    => format!("SMS \u{2014} {} \u{2014} {}", self.sms_number, trunc(&self.sms_message, 20)),
-            QrContentType::Tel    => format!("T\u{E9}l \u{2014} {}", self.tel_number),
+            QrContentType::Tel    => format!("{} \u{2014} {}", lang.t("qr_short.tel"), self.tel_number),
             QrContentType::Email  => format!("Email \u{2014} {}", self.email_to),
             QrContentType::Vcard  => format!("vCard \u{2014} {}", self.vcard_name),
             QrContentType::Mecard => format!("MECARD \u{2014} {}", self.mecard_name),
-            QrContentType::Geo    => format!("G\u{E9}o \u{2014} {}, {}", self.geo_lat, self.geo_lon),
+            QrContentType::Geo    => format!("{} \u{2014} {}, {}", lang.t("qr_short.geo"), self.geo_lat, self.geo_lon),
             QrContentType::Gs1    => format!("GS1 \u{2014} {}", trunc(&self.gs1_data, 30)),
             QrContentType::TwoDoc => format!("2D-Doc \u{2014} {}", self.twod_cert_id),
         }

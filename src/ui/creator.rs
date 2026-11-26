@@ -7,7 +7,7 @@ use crate::theme;
 
 pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
     ui.add_space(8.0);
-    theme::title(ui, "\u{1F4C4} Cr\u{E9}er un code QR");
+    theme::title(ui, &format!("\u{1F4C4} {}", app.lang.t("creator.title")));
     ui.separator();
     ui.add_space(8.0);
 
@@ -15,19 +15,19 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
 
     // ── Type + EC level ──────────────────────────────────────────────────────
     egui::Grid::new("type_row").num_columns(2).spacing([8.0, 4.0]).show(ui, |ui| {
-        ui.label("Type de QR :");
+        ui.label(app.lang.t("creator.type"));
         egui::ComboBox::from_id_source("qr_type")
-            .selected_text(app.form.content_type.label())
+            .selected_text(app.lang.t(app.form.content_type.label_key()))
             .show_ui(ui, |ui| {
                 for &t in QrContentType::ALL {
-                    if ui.selectable_label(app.form.content_type == t, t.label()).clicked() {
+                    if ui.selectable_label(app.form.content_type == t, app.lang.t(t.label_key())).clicked() {
                         app.form.content_type = t; changed = true;
                     }
                 }
             });
         ui.end_row();
 
-        ui.label("Correction d'erreur :");
+        ui.label(app.lang.t("creator.ec"));
         egui::ComboBox::from_id_source("ec_level")
             .selected_text(app.form.ec_level.label())
             .show_ui(ui, |ui| {
@@ -39,8 +39,8 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
             });
         ui.end_row();
 
-        ui.label("Micro QR :");
-        if ui.checkbox(&mut app.form.use_micro_qr, "Utiliser Micro QR (M1–M4, données courtes)").changed() {
+        ui.label(app.lang.t("creator.micro"));
+        if ui.checkbox(&mut app.form.use_micro_qr, app.lang.t("creator.micro_use")).changed() {
             changed = true;
         }
         ui.end_row();
@@ -57,7 +57,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
     let encoded = app.form.to_qr_string();
     ui.separator();
     ui.add_space(4.0);
-    theme::hint(ui, "Données encodées :");
+    theme::hint(ui, &app.lang.t("creator.encoded_data"));
     ui.add(
         egui::TextEdit::multiline(&mut encoded.as_str())
             .desired_rows(2)
@@ -69,7 +69,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
 
     // ── Actions ──────────────────────────────────────────────────────────────
     ui.horizontal(|ui| {
-        if ui.button("▶ Générer").clicked() || changed {
+        if ui.button(app.lang.t("creator.generate")).clicked() || changed {
             app.regenerate_qr();
         }
 
@@ -77,34 +77,34 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
 
         // Bouton "Enregistrer dans la bibliothèque"
         let save_label = if app.loaded_library_id.is_some() {
-            "\u{1F4BE} R\u{E9}-enregistrer"
+            format!("\u{1F4BE} {}", app.lang.t("creator.resave"))
         } else {
-            "\u{1F4BE} Enregistrer dans la biblioth\u{E8}que"
+            format!("\u{1F4BE} {}", app.lang.t("creator.save_to_library"))
         };
         if ui.button(save_label).clicked() {
             app.show_save_dialog = true;
             if app.save_name_input.is_empty() {
                 // Use display_name_hint which omits password fields
-                app.save_name_input = app.form.display_name_hint();
+                app.save_name_input = app.form.display_name_hint(&app.lang);
             }
         }
     });
 
     // ── Dialogue de sauvegarde ───────────────────────────────────────────────
     if app.show_save_dialog {
-        egui::Window::new("\u{1F4BE} Enregistrer dans la biblioth\u{E8}que")
+        egui::Window::new(format!("\u{1F4BE} {}", app.lang.t("creator.save_to_library")))
             .collapsible(false)
             .resizable(false)
             .auto_sized()
             .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
             .show(ui.ctx(), |ui| {
                 ui.add_space(4.0);
-                ui.label("Nom de l'entrée :");
+                ui.label(app.lang.t("creator.entry_name"));
                 ui.add_space(2.0);
                 let response = ui.add(
                     egui::TextEdit::singleline(&mut app.save_name_input)
                         .desired_width(320.0)
-                        .hint_text("Ex: QR WiFi bureau, carte de contact…"),
+                        .hint_text(app.lang.t("creator.entry_name_hint")),
                 );
                 response.request_focus();
 
@@ -116,7 +116,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
                     let name = app.save_name_input.trim().to_string();
                     let can_save = !name.is_empty();
 
-                    if ui.add_enabled(can_save, egui::Button::new("\u{2713} Enregistrer")).clicked()
+                    if ui.add_enabled(can_save, egui::Button::new(format!("\u{2713} {}", app.lang.t("creator.save")))).clicked()
                         || (ui.input(|i| i.key_pressed(egui::Key::Enter)) && can_save)
                     {
                         let tpl_state = build_template_state(app);
@@ -125,7 +125,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
                         app.save_name_input.clear();
                     }
 
-                    if ui.button("\u{2715} Annuler").clicked() {
+                    if ui.button(format!("\u{2715} {}", app.lang.t("creator.cancel"))).clicked() {
                         app.show_save_dialog = false;
                     }
                 });
@@ -136,7 +136,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
     // Indicateur "chargé depuis la bibliothèque"
     if app.loaded_library_id.is_some() {
         ui.add_space(4.0);
-        theme::hint(ui, "\u{270F} Configuration charg\u{E9}e depuis la biblioth\u{E8}que \u{2014} modifiez puis r\u{E9}-enregistrez.");
+        theme::hint(ui, &format!("\u{270F} {}", app.lang.t("creator.loaded_hint")));
     }
 }
 
@@ -145,32 +145,32 @@ fn show_form(app: &mut RustyQrApp, ui: &mut Ui) -> bool {
 
     match app.form.content_type {
         QrContentType::Url => {
-            field2(ui, "URL :", &mut app.form.url, &mut changed);
+            field2(ui, &app.lang.t("creator.url"), &mut app.form.url, &mut changed);
             theme::hint(ui, "Ex: https://example.com");
         }
 
         QrContentType::Text => {
-            ui.label("Texte :");
+            ui.label(app.lang.t("creator.text"));
             if ui.add(egui::TextEdit::multiline(&mut app.form.text)
                 .desired_rows(4).desired_width(f32::INFINITY)).changed() { changed = true; }
         }
 
         QrContentType::Wifi => {
             egui::Grid::new("wifi").num_columns(2).spacing([8.0, 4.0]).show(ui, |ui| {
-                lf(ui, "SSID :",          &mut app.form.wifi_ssid,     &mut changed);
-                lf(ui, "Mot de passe :",  &mut app.form.wifi_password, &mut changed);
-                ui.label("Sécurité :");
+                lf(ui, &app.lang.t("creator.ssid"),          &mut app.form.wifi_ssid,     &mut changed);
+                lf(ui, &app.lang.t("creator.password"),  &mut app.form.wifi_password, &mut changed);
+                ui.label(app.lang.t("creator.security"));
                 egui::ComboBox::from_id_source("wifi_sec")
-                    .selected_text(app.form.wifi_security.label())
+                    .selected_text(app.lang.t(app.form.wifi_security.label_key()))
                     .show_ui(ui, |ui| {
                         for s in [WifiSecurity::Wpa, WifiSecurity::Wep, WifiSecurity::None] {
-                            if ui.selectable_label(app.form.wifi_security == s, s.label()).clicked() {
+                            if ui.selectable_label(app.form.wifi_security == s, app.lang.t(s.label_key())).clicked() {
                                 app.form.wifi_security = s; changed = true;
                             }
                         }
                     });
                 ui.end_row();
-                ui.label("Réseau caché :");
+                ui.label(app.lang.t("creator.hidden_network"));
                 if ui.checkbox(&mut app.form.wifi_hidden, "").changed() { changed = true; }
                 ui.end_row();
             });
@@ -178,71 +178,71 @@ fn show_form(app: &mut RustyQrApp, ui: &mut Ui) -> bool {
 
         QrContentType::Sms => {
             egui::Grid::new("sms").num_columns(2).spacing([8.0, 4.0]).show(ui, |ui| {
-                lf(ui, "Numéro :", &mut app.form.sms_number, &mut changed);
+                lf(ui, &app.lang.t("creator.number"), &mut app.form.sms_number, &mut changed);
             });
-            ui.label("Message :");
+            ui.label(app.lang.t("creator.message"));
             if ui.add(egui::TextEdit::multiline(&mut app.form.sms_message)
                 .desired_rows(3).desired_width(f32::INFINITY)).changed() { changed = true; }
         }
 
         QrContentType::Tel => {
-            field2(ui, "Numéro :", &mut app.form.tel_number, &mut changed);
+            field2(ui, &app.lang.t("creator.number"), &mut app.form.tel_number, &mut changed);
             theme::hint(ui, "Ex: +33612345678");
         }
 
         QrContentType::Email => {
             egui::Grid::new("email").num_columns(2).spacing([8.0, 4.0]).show(ui, |ui| {
-                lf(ui, "Destinataire :", &mut app.form.email_to,      &mut changed);
-                lf(ui, "Sujet :",        &mut app.form.email_subject, &mut changed);
+                lf(ui, &app.lang.t("creator.recipient"), &mut app.form.email_to,      &mut changed);
+                lf(ui, &app.lang.t("creator.subject"),        &mut app.form.email_subject, &mut changed);
             });
-            ui.label("Corps :");
+            ui.label(app.lang.t("creator.body"));
             if ui.add(egui::TextEdit::multiline(&mut app.form.email_body)
                 .desired_rows(4).desired_width(f32::INFINITY)).changed() { changed = true; }
         }
 
         QrContentType::Vcard => {
             egui::Grid::new("vcard").num_columns(2).spacing([8.0, 4.0]).show(ui, |ui| {
-                lf(ui, "Nom :",          &mut app.form.vcard_name,    &mut changed);
-                lf(ui, "Organisation :", &mut app.form.vcard_org,     &mut changed);
-                lf(ui, "Téléphone :",    &mut app.form.vcard_phone,   &mut changed);
-                lf(ui, "Email :",        &mut app.form.vcard_email,   &mut changed);
-                lf(ui, "Site web :",     &mut app.form.vcard_url,     &mut changed);
-                lf(ui, "Adresse :",      &mut app.form.vcard_address, &mut changed);
-                lf(ui, "Note :",         &mut app.form.vcard_note,    &mut changed);
+                lf(ui, &app.lang.t("creator.name"),          &mut app.form.vcard_name,    &mut changed);
+                lf(ui, &app.lang.t("creator.organization"), &mut app.form.vcard_org,     &mut changed);
+                lf(ui, &app.lang.t("creator.phone"),    &mut app.form.vcard_phone,   &mut changed);
+                lf(ui, &app.lang.t("creator.email"),        &mut app.form.vcard_email,   &mut changed);
+                lf(ui, &app.lang.t("creator.website"),     &mut app.form.vcard_url,     &mut changed);
+                lf(ui, &app.lang.t("creator.address"),      &mut app.form.vcard_address, &mut changed);
+                lf(ui, &app.lang.t("creator.note"),         &mut app.form.vcard_note,    &mut changed);
             });
         }
 
         QrContentType::Mecard => {
             egui::Grid::new("mecard").num_columns(2).spacing([8.0, 4.0]).show(ui, |ui| {
-                lf(ui, "Nom :",        &mut app.form.mecard_name,  &mut changed);
-                lf(ui, "Téléphone :", &mut app.form.mecard_phone, &mut changed);
-                lf(ui, "Email :",     &mut app.form.mecard_email, &mut changed);
-                lf(ui, "URL :",       &mut app.form.mecard_url,   &mut changed);
+                lf(ui, &app.lang.t("creator.name"),        &mut app.form.mecard_name,  &mut changed);
+                lf(ui, &app.lang.t("creator.phone"), &mut app.form.mecard_phone, &mut changed);
+                lf(ui, &app.lang.t("creator.email"),     &mut app.form.mecard_email, &mut changed);
+                lf(ui, &app.lang.t("creator.url"),       &mut app.form.mecard_url,   &mut changed);
             });
         }
 
         QrContentType::Geo => {
             egui::Grid::new("geo").num_columns(2).spacing([8.0, 4.0]).show(ui, |ui| {
-                lf(ui, "Latitude :",       &mut app.form.geo_lat, &mut changed);
-                lf(ui, "Longitude :",      &mut app.form.geo_lon, &mut changed);
-                lf(ui, "Altitude (opt) :", &mut app.form.geo_alt, &mut changed);
+                lf(ui, &app.lang.t("creator.latitude"),       &mut app.form.geo_lat, &mut changed);
+                lf(ui, &app.lang.t("creator.longitude"),      &mut app.form.geo_lon, &mut changed);
+                lf(ui, &app.lang.t("creator.altitude"), &mut app.form.geo_alt, &mut changed);
             });
-            theme::hint(ui, "Ex: 48.8566, 2.3522  (Paris)");
+            theme::hint(ui, &app.lang.t("creator.geo_hint"));
         }
 
         QrContentType::Gs1 => {
-            ui.label("Données GS1 (Application Identifiers + valeurs) :");
+            ui.label(app.lang.t("creator.gs1_data"));
             if ui.add(egui::TextEdit::multiline(&mut app.form.gs1_data)
                 .desired_rows(3).desired_width(f32::INFINITY)).changed() { changed = true; }
-            theme::hint(ui, "Ex: (01)09521234543213(17)210630(10)ABC123");
+            theme::hint(ui, &app.lang.t("creator.gs1_hint"));
         }
 
         QrContentType::TwoDoc => {
             egui::Grid::new("twodoc").num_columns(2).spacing([8.0, 4.0]).show(ui, |ui| {
-                lf(ui, "ID Certificat :", &mut app.form.twod_cert_id, &mut changed);
-                lf(ui, "Données (C40) :", &mut app.form.twod_c40,    &mut changed);
+                lf(ui, &app.lang.t("creator.cert_id"), &mut app.form.twod_cert_id, &mut changed);
+                lf(ui, &app.lang.t("creator.c40_data"), &mut app.form.twod_c40,    &mut changed);
             });
-            theme::status_warn(ui, "\u{26A0} 2D-Doc g\u{E9}n\u{E9}r\u{E9} sans signature cryptographique (informatif).");
+            theme::status_warn(ui, &format!("\u{26A0} {}", app.lang.t("creator.twodoc_warning")));
         }
     }
 

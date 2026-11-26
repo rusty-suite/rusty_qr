@@ -6,11 +6,20 @@ const GITHUB_DEFAULT_LANG: &str =
 const GITHUB_LANG_API: &str =
     "https://api.github.com/repos/rusty-suite/rusty_qr/contents/lang";
 
-const BUNDLED_LANGS: &[(&str, &str)] = &[
+/// Stem of the universal fallback language (always compiled in).
+const DEFAULT_STEM: &str = "EN_en.default";
+
+/// Every language shipped with the binary. They are written to the local
+/// `lang/` folder on first run and also serve as in-memory fallback, so a
+/// stale or incomplete local file never shows raw keys to the user.
+pub const BUNDLED_LANGS: &[(&str, &str)] = &[
     ("EN_en.default.toml", include_str!("../lang/EN_en.default.toml")),
     ("FR_fr.toml",         include_str!("../lang/FR_fr.toml")),
+    ("CH_fr.toml",         include_str!("../lang/CH_fr.toml")),
     ("DE_de.toml",         include_str!("../lang/DE_de.toml")),
+    ("CH_de.toml",         include_str!("../lang/CH_de.toml")),
     ("IT_it.toml",         include_str!("../lang/IT_it.toml")),
+    ("CH_it.toml",         include_str!("../lang/CH_it.toml")),
 ];
 
 // ─── Types publics ────────────────────────────────────────────────────────────
@@ -43,15 +52,33 @@ pub struct RemoteLangInfo {
 // ─── Implémentation ───────────────────────────────────────────────────────────
 
 impl Default for Lang {
+    /// The bundled default language (English).
     fn default() -> Self {
-        Self { strings: HashMap::new(), active_stem: String::new() }
+        Self { strings: bundled_strings(DEFAULT_STEM), active_stem: DEFAULT_STEM.to_string() }
     }
 }
 
 impl Lang {
-    /// Retourne la traduction de `key`, ou `key` lui-même si absent.
+    /// Returns the translation of `key`.
+    ///
+    /// Lookup order: active language → bundled English. When a key is
+    /// unknown everywhere (e.g. a free-form message coming from a template
+    /// or a library error), the key itself is returned unchanged.
     pub fn t(&self, key: &str) -> String {
-        self.strings.get(key).cloned().unwrap_or_else(|| key.to_string())
+        self.strings
+            .get(key)
+            .or_else(|| default_strings().get(key))
+            .cloned()
+            .unwrap_or_else(|| key.to_string())
+    }
+
+    /// Like [`Lang::t`], then replaces each `{name}` placeholder with its value.
+    pub fn tf(&self, key: &str, args: &[(&str, &str)]) -> String {
+        let mut s = self.t(key);
+        for (name, value) in args {
+            s = s.replace(&format!("{{{name}}}"), value);
+        }
+        s
     }
 
     /// Charge la langue depuis `{work_dir}/lang/`.
@@ -74,7 +101,7 @@ impl Lang {
             if path.exists() {
                 return match parse_file(&path, stem.clone()) {
                     Ok(lang) => (lang, None),
-                    Err(e)   => (Self::default(), Some(format!("Erreur langue '{stem}' : {e}"))),
+                    Err(e)   => load_error(&e),
                 };
             }
         }
@@ -108,10 +135,10 @@ impl Lang {
                 let stem = file_stem(p);
                 match parse_file(p, stem) {
                     Ok(l)  => (l, None),
-                    Err(e) => (Self::default(), Some(format!("Erreur chargement langue : {e}"))),
+                    Err(e) => load_error(&e),
                 }
             }
-            None => (Self::default(), Some("Aucun fichier de langue trouvé.".into())),
+            None => (Self::default(), None),
         }
     }
 
@@ -192,7 +219,7 @@ impl Lang {
             .call()
             .map_err(|e| e.to_string())?;
         let json: serde_json::Value = resp.into_json().map_err(|e| e.to_string())?;
-        let arr = json.as_array().ok_or_else(|| "index langue invalide".to_string())?;
+        let arr = json.as_array().ok_or_else(|| "invalid language index".to_string())?;
 
         let mut out: Vec<RemoteLangInfo> = arr.iter().filter_map(|item| {
             let kind = item.get("type")?.as_str()?;
@@ -238,21 +265,15 @@ impl Lang {
                 Ok(body) => {
                     let dest = lang_dir.join("EN_en.default.toml");
                     let _ = std::fs::write(&dest, &body);
-                    match parse_toml_str(&body, "EN_en.default".into()) {
+                    match parse_toml_str(&body, DEFAULT_STEM.into()) {
                         Ok(lang) => (lang, None),
-                        Err(e)   => (Self::default(), Some(format!("Erreur parsing langue : {e}"))),
+                        Err(e)   => load_error(&e),
                     }
                 }
-                Err(_) => (Self::default(), Some("Erreur lecture réponse réseau.".into())),
+                Err(e) => load_error(&e.to_string()),
             },
-            Err(_) => (
-                Self::default(),
-                Some(
-                    "Ce programme a besoin d'un accès internet\n\
-                     pour télécharger ses ressources linguistiques."
-                        .into(),
-                ),
-            ),
+            // Offline: the bundled English language is always available.
+            Err(_) => (Self::default(), None),
         }
     }
 }
@@ -268,7 +289,37 @@ fn parse_toml_str(content: &str, stem: String) -> Result<Lang, String> {
     let table: toml::Table = toml::from_str(content).map_err(|e| e.to_string())?;
     let mut strings = HashMap::new();
     flatten_table("", &table, &mut strings);
+    // Complete a stale local file with the keys of the bundled version of
+    // the same language (local values always win).
+    for (k, v) in bundled_strings(&stem) {
+        strings.entry(k).or_insert(v);
+    }
     Ok(Lang { strings, active_stem: stem })
+}
+
+/// Default language + error message shown in the start-up warning dialog.
+fn load_error(detail: &str) -> (Lang, Option<String>) {
+    let lang = Lang::default();
+    let msg = lang.tf("errors.lang_load", &[("error", detail)]);
+    (lang, Some(msg))
+}
+
+/// Flattened strings of a bundled language, empty if `stem` is not bundled.
+fn bundled_strings(stem: &str) -> HashMap<String, String> {
+    let mut out = HashMap::new();
+    let file = format!("{stem}.toml");
+    if let Some((_, content)) = BUNDLED_LANGS.iter().find(|(name, _)| *name == file) {
+        if let Ok(table) = toml::from_str::<toml::Table>(content) {
+            flatten_table("", &table, &mut out);
+        }
+    }
+    out
+}
+
+/// Bundled English strings, parsed once.
+fn default_strings() -> &'static HashMap<String, String> {
+    static CACHE: std::sync::OnceLock<HashMap<String, String>> = std::sync::OnceLock::new();
+    CACHE.get_or_init(|| bundled_strings(DEFAULT_STEM))
 }
 
 fn flatten_table(prefix: &str, table: &toml::Table, out: &mut HashMap<String, String>) {
@@ -352,4 +403,89 @@ fn parse_locale(locale: &str) -> (String, String) {
     let lang    = it.next().unwrap_or("en").to_string();
     let country = it.next().unwrap_or("US").to_string();
     (lang, country)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::BTreeSet;
+
+    fn keys(stem: &str) -> BTreeSet<String> {
+        bundled_strings(stem).into_keys().collect()
+    }
+
+    /// Every bundled language must define exactly the keys of the English file.
+    #[test]
+    fn all_languages_have_the_same_keys() {
+        let reference = keys(DEFAULT_STEM);
+        assert!(!reference.is_empty());
+        for (file, _) in BUNDLED_LANGS {
+            let stem = file.trim_end_matches(".toml");
+            let k = keys(stem);
+            let missing: Vec<_> = reference.difference(&k).collect();
+            let extra: Vec<_>   = k.difference(&reference).collect();
+            assert!(missing.is_empty() && extra.is_empty(),
+                "{file}: missing {missing:?}, extra {extra:?}");
+        }
+    }
+
+    /// Every translation key written in the source code must exist in English.
+    #[test]
+    fn keys_used_in_code_exist() {
+        let reference = keys(DEFAULT_STEM);
+        let sections: BTreeSet<&str> = reference.iter().filter_map(|k| k.split('.').next()).collect();
+        let mut missing = Vec::new();
+        let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+        let mut stack = vec![src];
+        while let Some(dir) = stack.pop() {
+            for entry in std::fs::read_dir(&dir).unwrap().flatten() {
+                let path = entry.path();
+                if path.is_dir() { stack.push(path); continue; }
+                if path.extension().and_then(|e| e.to_str()) != Some("rs") { continue; }
+                let text = std::fs::read_to_string(&path).unwrap();
+                for lit in text.split('"').skip(1).step_by(2) {
+                    let is_key = lit.contains('.')
+                        && lit.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_' || c == '.')
+                        && sections.contains(lit.split('.').next().unwrap())
+                        // file names such as "library.json" are not keys
+                        && !matches!(lit.rsplit('.').next(), Some("json" | "toml" | "txt" | "svg" | "png"));
+                    if is_key && !reference.contains(lit) {
+                        missing.push(format!("{}: {lit}", path.display()));
+                    }
+                }
+            }
+        }
+        assert!(missing.is_empty(), "keys missing from EN: {missing:#?}");
+    }
+
+    /// Built-in SVG themes are looked up by id at runtime.
+    #[test]
+    fn builtin_templates_are_translated() {
+        let reference = keys(DEFAULT_STEM);
+        for t in crate::template::BUILTIN {
+            for suffix in ["name", "desc"] {
+                let k = format!("template.{}.{suffix}", t.id);
+                assert!(reference.contains(&k), "missing {k}");
+            }
+        }
+    }
+
+    /// No language file may still carry a bilingual / foreign window title.
+    #[test]
+    fn language_titles_are_localized() {
+        for (file, _) in BUNDLED_LANGS {
+            let stem = file.trim_end_matches(".toml");
+            let title = bundled_strings(stem).remove("lang_page.title").unwrap();
+            assert!(!title.contains('/'), "{file}: {title}");
+        }
+    }
+
+    #[test]
+    fn missing_key_falls_back_to_english_then_key() {
+        let mut lang = Lang::default();
+        lang.strings.clear();
+        assert_eq!(lang.t("lang_page.title"), "Language");
+        assert_eq!(lang.t("no.such.key"), "no.such.key");
+        assert_eq!(lang.tf("preview.profile", &[("name", "X")]), "Profile: X");
+    }
 }

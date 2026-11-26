@@ -6,15 +6,15 @@ use crate::theme;
 
 pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
     ui.add_space(8.0);
-    theme::title(ui, "\u{1F3A8} Profils de style");
-    theme::hint(ui, "Chaque profil d\u{E9}finit les couleurs, le logo et sa mise en page sur le QR code.");
+    theme::title(ui, &format!("\u{1F3A8} {}", app.lang.t("profiles.title")));
+    theme::hint(ui, &app.lang.t("profiles.hint"));
     ui.separator();
     ui.add_space(8.0);
 
     ui.columns(2, |cols| {
         // ── Colonne gauche : liste des profils ───────────────────────────────
         let ui = &mut cols[0];
-        ui.label(egui::RichText::new("Profils").strong());
+        ui.label(egui::RichText::new(app.lang.t("profiles.list")).strong());
         ui.add_space(4.0);
 
         let mut to_delete: Option<usize> = None;
@@ -40,7 +40,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
                             egui::Button::new(
                                 egui::RichText::new("\u{1F5D1}").color(egui::Color32::from_rgb(200, 80, 80))
                             ).frame(false)
-                        ).on_hover_text("Supprimer ce profil").clicked() {
+                        ).on_hover_text(app.lang.t("profiles.delete")).clicked() {
                             to_delete = Some(i);
                         }
                     }
@@ -73,9 +73,9 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
                     .rounding(4.0)
                     .inner_margin(egui::Margin::symmetric(8.0, 4.0))
                     .show(ui, |ui| {
-                        ui.label(egui::RichText::new(format!("Supprimer « {name} » ?")).color(egui::Color32::from_rgb(240, 120, 120)));
+                        ui.label(egui::RichText::new(app.lang.tf("profiles.delete_confirm", &[("name", &name)])).color(egui::Color32::from_rgb(240, 120, 120)));
                         ui.horizontal(|ui| {
-                            if ui.button("\u{2713} Confirmer").clicked() {
+                            if ui.button(format!("\u{2713} {}", app.lang.t("profiles.confirm"))).clicked() {
                                 app.profiles.remove(idx);
                                 if app.selected_profile >= app.profiles.len() {
                                     app.selected_profile = app.profiles.len().saturating_sub(1);
@@ -84,7 +84,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
                                 app.mark_qr_dirty();
                                 app.confirm_delete_profile = None;
                             }
-                            if ui.button("\u{2715} Annuler").clicked() {
+                            if ui.button(format!("\u{2715} {}", app.lang.t("profiles.cancel"))).clicked() {
                                 app.confirm_delete_profile = None;
                             }
                         });
@@ -93,8 +93,8 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
         }
 
         ui.add_space(8.0);
-        if ui.button("+ Nouveau profil").clicked() {
-            app.profiles.push(StyleProfile::named(&format!("Profil {}", app.profiles.len() + 1)));
+        if ui.button(app.lang.t("profiles.new")).clicked() {
+            app.profiles.push(StyleProfile::named(&app.lang.tf("profiles.new_name", &[("n", &(app.profiles.len() + 1).to_string())])));
             app.selected_profile = app.profiles.len() - 1;
             app.confirm_delete_profile = None;
             app.save_profiles();
@@ -105,7 +105,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
         let ec = app.form.ec_level;
         if let Some(profile) = app.profiles.get_mut(app.selected_profile) {
             profile_editor(
-                ui, profile, ec,
+                ui, profile, ec, &app.lang,
                 &mut app.profiles_dirty,
                 &mut app.logo_dl_rx, &mut app.logo_dl_status,
             );
@@ -123,11 +123,12 @@ fn profile_editor(
     ui: &mut Ui,
     profile: &mut StyleProfile,
     ec: EcLevel,
+    lang: &crate::lang::Lang,
     save_dirty: &mut bool,
     logo_dl_rx: &mut Option<std::sync::mpsc::Receiver<Result<std::path::PathBuf, String>>>,
     logo_dl_status: &mut Option<(bool, String)>,
 ) {
-    ui.label(egui::RichText::new("Éditer le profil").strong());
+    ui.label(egui::RichText::new(lang.t("profiles.edit")).strong());
     ui.add_space(4.0);
 
     {
@@ -135,26 +136,26 @@ fn profile_editor(
         egui::Grid::new("prof_base")
             .num_columns(2).spacing([8.0, 6.0])
             .show(ui, |ui| {
-                ui.label("Nom :");
+                ui.label(lang.t("profiles.name"));
                 if ui.text_edit_singleline(&mut profile.name).changed() { *save_dirty = true; }
                 ui.end_row();
 
-                ui.label("Couleur modules :");
+                ui.label(lang.t("profiles.module_color"));
                 if color_btn(ui, &mut profile.fg) { *save_dirty = true; }
                 ui.end_row();
 
-                ui.label("Couleur fond :");
+                ui.label(lang.t("profiles.bg_color"));
                 if color_btn(ui, &mut profile.bg) { *save_dirty = true; }
                 ui.end_row();
 
-                ui.label("Taille module (px) :");
+                ui.label(lang.t("profiles.module_size"));
                 let mut px = profile.module_px as i32;
                 let r = ui.add(egui::Slider::new(&mut px, 4..=24));
                 if r.changed() { profile.module_px = px as u32; }
                 if r.drag_stopped() || (r.changed() && !r.dragged()) { *save_dirty = true; }
                 ui.end_row();
 
-                ui.label("Zone silencieuse :");
+                ui.label(lang.t("profiles.quiet_zone"));
                 let mut qz = profile.quiet_zone as i32;
                 let r = ui.add(egui::Slider::new(&mut qz, 0..=10));
                 if r.changed() { profile.quiet_zone = qz as u32; }
@@ -167,26 +168,26 @@ fn profile_editor(
         ui.add_space(6.0);
 
         // ── Logo / image incrustée ────────────────────────────────────────────
-        ui.label(egui::RichText::new("Logo / image incrust\u{E9}e").strong());
+        ui.label(egui::RichText::new(lang.t("profiles.logo_section")).strong());
         ui.add_space(4.0);
 
         egui::Grid::new("prof_logo")
             .num_columns(2).spacing([8.0, 6.0])
             .show(ui, |ui| {
                 // ── Fichier local ─────────────────────────────────────────────
-                ui.label("Fichier local :");
+                ui.label(lang.t("profiles.local_file"));
                 ui.horizontal(|ui| {
                     let path_resp = ui.add(
                         egui::TextEdit::singleline(&mut profile.logo_path)
-                            .hint_text("chemin / drop ici…")
+                            .hint_text(lang.t("profiles.path_hint"))
                             .desired_width(160.0),
                     );
                     if path_resp.changed() { *save_dirty = true; profile.logo_url.clear(); }
 
                     // Bouton dossier
-                    if ui.button("\u{1F4C1}").on_hover_text("Choisir un fichier image").clicked() {
+                    if ui.button("\u{1F4C1}").on_hover_text(lang.t("profiles.choose_image")).clicked() {
                         if let Some(p) = rfd::FileDialog::new()
-                            .add_filter("Image", &["png","jpg","jpeg","webp","bmp","gif"])
+                            .add_filter(lang.t("export_format.image_filter"), &["png","jpg","jpeg","webp","bmp","gif"])
                             .pick_file()
                         {
                             profile.logo_path = p.to_string_lossy().into_owned();
@@ -196,7 +197,7 @@ fn profile_editor(
                     }
                     if !profile.logo_path.is_empty() {
                         if ui.add(egui::Button::new("\u{2715}").frame(false))
-                            .on_hover_text("Supprimer le logo")
+                            .on_hover_text(lang.t("profiles.remove_logo"))
                             .clicked()
                         {
                             profile.logo_path.clear();
@@ -210,7 +211,7 @@ fn profile_editor(
                 ui.end_row();
 
                 // ── URL distante ──────────────────────────────────────────────
-                ui.label("URL image :");
+                ui.label(lang.t("profiles.image_url"));
                 ui.horizontal(|ui| {
                     let url_resp = ui.add(
                         egui::TextEdit::singleline(&mut profile.logo_url)
@@ -225,7 +226,7 @@ fn profile_editor(
                         egui::Button::new(
                             if downloading { "\u{23F3}" } else { "\u{1F4E5}" }
                         ),
-                    ).on_hover_text("T\u{E9}l\u{E9}charger et utiliser comme logo");
+                    ).on_hover_text(lang.t("profiles.download_logo"));
 
                     if btn.clicked() {
                         let url = profile.logo_url.clone();
@@ -236,7 +237,7 @@ fn profile_editor(
                             );
                         });
                         *logo_dl_rx = Some(rx);
-                        *logo_dl_status = Some((true, "T\u{E9}l\u{E9}chargement…".into()));
+                        *logo_dl_status = Some((true, lang.t("status.downloading")));
                     }
                 });
                 ui.end_row();
@@ -254,7 +255,7 @@ fn profile_editor(
 
                 // ── Taille du logo avec plafond dynamique basé sur EC ─────────
                 let max_r = renderer::max_logo_ratio(ec);
-                ui.label("Taille (ratio) :");
+                ui.label(lang.t("profiles.size_ratio"));
                 ui.vertical(|ui| {
                     // Forcer le ratio dans la limite EC si déjà trop grand
                     if profile.logo_ratio > max_r {
@@ -269,22 +270,24 @@ fn profile_editor(
                     if resp.changed() { profile.logo_ratio = r; }
                     if resp.drag_stopped() || (resp.changed() && !resp.dragged()) { *save_dirty = true; }
                     ui.label(
-                        egui::RichText::new(format!(
-                            "Max EC {} : {:.0}%  \u{2014}  actuel : {:.0}%",
-                            ec.label(), max_r * 100.0, profile.logo_ratio * 100.0
-                        ))
+                        egui::RichText::new(lang.tf("profiles.ratio_info", &[
+                            ("ec",  ec.label()),
+                            ("max", &format!("{:.0}", max_r * 100.0)),
+                            ("cur", &format!("{:.0}", profile.logo_ratio * 100.0)),
+                        ]))
                         .small()
                         .color(egui::Color32::from_rgb(140, 180, 220)),
                     );
                 });
                 ui.end_row();
 
-                ui.label("Marge fond blanc :");
+                ui.label(lang.t("profiles.white_margin"));
                 let mut pad = profile.logo_padding as i32;
+                let no_bg = lang.t("profiles.no_background");
                 let r = ui.add(
                     egui::Slider::new(&mut pad, 0..=20)
                         .custom_formatter(|v, _| {
-                            if v == 0.0 { "0 \u{2014} aucun fond".into() }
+                            if v == 0.0 { no_bg.clone() }
                             else { format!("{v:.0} px") }
                         })
                 );
@@ -295,7 +298,7 @@ fn profile_editor(
                 if profile.logo_padding == 0 {
                     ui.label("");
                     ui.label(
-                        egui::RichText::new("\u{2192} logo superpos\u{E9} sans fond blanc")
+                        egui::RichText::new(lang.t("profiles.overlay_hint"))
                             .small()
                             .color(egui::Color32::from_rgb(140, 180, 220)),
                     );
@@ -306,7 +309,7 @@ fn profile_editor(
         ui.add_space(8.0);
 
         // ── Grille de position 3×3 ────────────────────────────────────────────
-        ui.label(egui::RichText::new("Position du logo").small().weak());
+        ui.label(egui::RichText::new(lang.t("profiles.logo_position")).small().weak());
         ui.add_space(4.0);
 
         let pos_grid = [
@@ -354,7 +357,7 @@ fn profile_editor(
         }
 
         ui.add_space(4.0);
-        theme::hint(ui, "Cliquez sur une cellule pour positionner le logo.\nLe centre est la position recommand\u{E9}e (\u{2022}).");
+        theme::hint(ui, &lang.t("profiles.position_hint"));
 
         // Safe zone info
         // ── Indicateur lisibilité ─────────────────────────────────────────────
@@ -363,15 +366,13 @@ fn profile_editor(
             let ratio  = profile.logo_ratio;
             let max_ec = renderer::max_logo_ratio(ec);
             let (icon, text, color) = if ratio <= max_ec {
-                ("\u{2713}", format!(
-                    "QR lisible avec {} (logo \u{2264} {:.0}%)",
-                    ec.label(), max_ec * 100.0
-                ), egui::Color32::from_rgb(80, 200, 80))
+                ("\u{2713}", lang.tf("profiles.readable", &[
+                    ("ec",  ec.label()),
+                    ("max", &format!("{:.0}", max_ec * 100.0)),
+                ]), egui::Color32::from_rgb(80, 200, 80))
             } else {
-                ("\u{26A0}", format!(
-                    "Logo trop grand pour {} \u{2014} r\u{E9}duisez ou passez en EC H",
-                    ec.label()
-                ), egui::Color32::from_rgb(220, 100, 60))
+                ("\u{26A0}", lang.tf("profiles.too_big", &[("ec", ec.label())]),
+                 egui::Color32::from_rgb(220, 100, 60))
             };
             ui.label(
                 egui::RichText::new(format!("{icon} {text}"))

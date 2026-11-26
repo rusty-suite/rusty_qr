@@ -41,7 +41,7 @@ pub struct StyleProfile {
 impl Default for StyleProfile {
     fn default() -> Self {
         Self {
-            name: "Défaut".into(),
+            name: "Default".into(),
             fg: [0, 0, 0],
             bg: [255, 255, 255],
             module_px: 10,
@@ -102,7 +102,8 @@ fn profiles_path() -> std::path::PathBuf {
     crate::workdir::work_dir().join("profiles.json")
 }
 
-pub fn load_profiles() -> Vec<StyleProfile> {
+/// Saved profiles, or the default set named in the user language on first run.
+pub fn load_profiles(lang: &crate::lang::Lang) -> Vec<StyleProfile> {
     let path = profiles_path();
     if let Ok(data) = std::fs::read_to_string(&path) {
         if let Ok(p) = serde_json::from_str::<Vec<StyleProfile>>(&data) {
@@ -110,14 +111,14 @@ pub fn load_profiles() -> Vec<StyleProfile> {
         }
     }
     vec![
-        StyleProfile::named("Défaut (noir/blanc)"),
+        StyleProfile::named(&lang.t("profiles.default_bw")),
         StyleProfile {
-            name: "Bleu foncé".into(),
+            name: lang.t("profiles.default_blue"),
             fg: [20, 40, 120], bg: [240, 245, 255],
             ..Default::default()
         },
         StyleProfile {
-            name: "Vert tech".into(),
+            name: lang.t("profiles.default_green"),
             fg: [30, 100, 50], bg: [230, 255, 235],
             ..Default::default()
         },

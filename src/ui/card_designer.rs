@@ -12,8 +12,8 @@ const fn remote_base()   -> usize { template::BUILTIN.len() + 2 }
 
 pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
     ui.add_space(8.0);
-    theme::title(ui, "\u{1F5FA} Concepteur de cartes");
-    theme::hint(ui, "Mettez en page votre code QR sur une carte, étiquette ou flyer — puis exportez.");
+    theme::title(ui, &format!("\u{1F5FA} {}", app.lang.t("card.title")));
+    theme::hint(ui, &app.lang.t("card.hint"));
     ui.separator();
     ui.add_space(8.0);
 
@@ -25,7 +25,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
         let ui = &mut cols[0];
 
         // ── Thème SVG ────────────────────────────────────────────────────────
-        ui.label(egui::RichText::new("Thème SVG").strong());
+        ui.label(egui::RichText::new(app.lang.t("card.svg_theme")).strong());
         ui.add_space(4.0);
         if show_template_selector(app, ui) { changed = true; }
 
@@ -36,14 +36,14 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
         let card = &mut app.card;
 
         // ── Gabarit ──────────────────────────────────────────────────────────
-        ui.label(egui::RichText::new("Gabarit").strong());
+        ui.label(egui::RichText::new(app.lang.t("card.layout")).strong());
         ui.add_space(4.0);
 
         egui::ComboBox::from_id_source("card_layout")
-            .selected_text(card.layout.label())
+            .selected_text(app.lang.t(card.layout.label_key()))
             .show_ui(ui, |ui| {
                 for &lay in CardLayout::ALL {
-                    if ui.selectable_label(card.layout == lay, lay.label()).clicked() {
+                    if ui.selectable_label(card.layout == lay, app.lang.t(lay.label_key())).clicked() {
                         // Preserve user-set colors and carry over field values
                         let old_fields  = card.fields.clone();
                         let old_bg      = card.bg_color;
@@ -68,22 +68,22 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
         ui.add_space(8.0);
 
         // ── Couleurs ─────────────────────────────────────────────────────────
-        ui.label(egui::RichText::new("Couleurs").strong());
+        ui.label(egui::RichText::new(app.lang.t("card.colors")).strong());
         ui.add_space(4.0);
 
         egui::Grid::new("card_colors")
             .num_columns(2)
             .spacing([8.0, 6.0])
             .show(ui, |ui| {
-                ui.label("Fond :");
+                ui.label(app.lang.t("card.bg"));
                 if color_edit(ui, &mut card.bg_color) { changed = true; }
                 ui.end_row();
 
-                ui.label("Texte :");
+                ui.label(app.lang.t("card.text"));
                 if color_edit(ui, &mut card.text_color) { changed = true; }
                 ui.end_row();
 
-                ui.label("Accent :");
+                ui.label(app.lang.t("card.accent"));
                 if color_edit(ui, &mut card.accent_color) { changed = true; }
                 ui.end_row();
             });
@@ -96,9 +96,9 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
         // If a template with detected F-variables is active, show template fields.
         // Otherwise fall back to the card layout fields.
         if app.selected_template_idx > 0 && !app.template_field_data.is_empty() {
-            ui.label(egui::RichText::new("Zones de texte du thème").strong());
+            ui.label(egui::RichText::new(app.lang.t("card.theme_fields")).strong());
             ui.add_space(4.0);
-            theme::hint(ui, "Champs détectés dans le thème SVG sélectionné.");
+            theme::hint(ui, &app.lang.t("card.theme_fields_hint"));
             ui.add_space(4.0);
 
             let field_count = app.template_field_data.len();
@@ -107,13 +107,14 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
                     let vis  = &mut app.template_field_data[i].visible;
                     let icon = if *vis { "\u{1F441}" } else { "\u{1F648}" };
                     if ui.small_button(icon)
-                        .on_hover_text(if *vis { "Masquer ce champ" } else { "Afficher ce champ" })
+                        .on_hover_text(if *vis { app.lang.t("card.hide_field") } else { app.lang.t("card.show_field") })
                         .clicked()
                     {
                         *vis = !*vis;
                         changed = true;
                     }
-                    let label = app.template_field_data[i].label.clone();
+                    // Labels are translation keys for layout fields, free text for template-defined ones.
+                    let label = app.lang.t(&app.template_field_data[i].label);
                     ui.label(egui::RichText::new(&label).small().weak());
                 });
 
@@ -124,7 +125,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
                     if visible { 220 } else { 80 });
                 let r = ui.add(
                     egui::TextEdit::singleline(&mut app.template_field_data[i].value)
-                        .hint_text(if hint_txt.is_empty() { "Valeur…" } else { &hint_txt })
+                        .hint_text(if hint_txt.is_empty() { app.lang.t("card.value_hint") } else { hint_txt.clone() })
                         .text_color(dim)
                         .desired_width(f32::INFINITY),
                 );
@@ -132,13 +133,13 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
                 ui.add_space(2.0);
             }
         } else {
-            ui.label(egui::RichText::new("Contenu").strong());
+            ui.label(egui::RichText::new(app.lang.t("card.content")).strong());
             ui.add_space(4.0);
 
-            let labels = card.layout.field_labels();
+            let labels = card.layout.field_label_keys();
             let field_count = card.fields.len();
             for i in 0..field_count {
-                let label = labels.get(i).copied().unwrap_or("Champ");
+                let label = app.lang.t(labels.get(i).copied().unwrap_or("card.field"));
                 ui.label(egui::RichText::new(label).small().weak());
                 if ui.text_edit_singleline(&mut card.fields[i]).changed() { changed = true; }
                 ui.add_space(2.0);
@@ -150,9 +151,9 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
             ui.add_space(10.0);
             ui.separator();
             ui.add_space(8.0);
-            ui.label(egui::RichText::new("Couleurs du thème").strong());
+            ui.label(egui::RichText::new(app.lang.t("card.theme_colors")).strong());
             ui.add_space(4.0);
-            theme::hint(ui, "Couleurs supplémentaires définies par le thème SVG.");
+            theme::hint(ui, &app.lang.t("card.theme_colors_hint"));
             ui.add_space(4.0);
 
             let color_count = app.template_color_data.len();
@@ -176,28 +177,28 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
         ui.add_space(8.0);
 
         // ── Export ───────────────────────────────────────────────────────────
-        ui.label(egui::RichText::new("Exporter la carte").strong());
+        ui.label(egui::RichText::new(app.lang.t("card.export")).strong());
         ui.add_space(4.0);
 
         if app.qr_matrix.is_none() {
-            theme::status_warn(ui, "\u{26A0} G\u{E9}n\u{E9}rez d'abord un QR dans l'onglet Cr\u{E9}er.");
+            theme::status_warn(ui, &format!("\u{26A0} {}", app.lang.t("card.generate_first")));
         }
 
         let exporting = app.card_export_rx.is_some();
         if exporting {
-            theme::hint(ui, "\u{23F3} Export en cours\u{2026}");
+            theme::hint(ui, &format!("\u{23F3} {}", app.lang.t("status.exporting")));
         } else {
             ui.horizontal(|ui| {
-                if ui.button("SVG").on_hover_text("Vecteur — idéal pour l'impression").clicked() {
+                if ui.button("SVG").on_hover_text(app.lang.t("card.svg_hint")).clicked() {
                     export_card(app, CardExportFmt::Svg);
                 }
-                if ui.button("PDF").on_hover_text("300 dpi — prêt à imprimer").clicked() {
+                if ui.button("PDF").on_hover_text(app.lang.t("card.pdf_hint")).clicked() {
                     export_card(app, CardExportFmt::Pdf);
                 }
-                if ui.button("PNG").on_hover_text("Raster 300 dpi avec transparence").clicked() {
+                if ui.button("PNG").on_hover_text(app.lang.t("card.png_hint")).clicked() {
                     export_card(app, CardExportFmt::Png);
                 }
-                if ui.button("JPEG").on_hover_text("Raster 300 dpi — fond blanc").clicked() {
+                if ui.button("JPEG").on_hover_text(app.lang.t("card.jpeg_hint")).clicked() {
                     export_card(app, CardExportFmt::Jpeg);
                 }
             });
@@ -212,20 +213,20 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
 
         if app.selected_template_idx > 0 {
             if let Some(tex) = &app.template_preview_texture {
-                ui.label(egui::RichText::new("Aperçu du thème").strong());
+                ui.label(egui::RichText::new(app.lang.t("card.theme_preview")).strong());
                 ui.add_space(4.0);
                 let avail = ui.available_width();
                 let [tw, th] = [tex.size()[0] as f32, tex.size()[1] as f32];
                 let scale   = (avail / tw).min(1.0);
                 ui.add(egui::Image::new(tex).fit_to_exact_size(egui::vec2(tw * scale, th * scale)));
             } else {
-                ui.label(egui::RichText::new("Aperçu").strong());
+                ui.label(egui::RichText::new(app.lang.t("card.preview")).strong());
                 ui.add_space(4.0);
-                theme::hint(ui, "Rendu en cours…");
+                theme::hint(ui, &app.lang.t("card.rendering"));
                 show_egui_preview(app, ui);
             }
         } else {
-            ui.label(egui::RichText::new("Aperçu").strong());
+            ui.label(egui::RichText::new(app.lang.t("card.preview")).strong());
             ui.add_space(4.0);
             show_egui_preview(app, ui);
         }
@@ -248,15 +249,16 @@ fn show_template_selector(app: &mut RustyQrApp, ui: &mut Ui) -> bool {
 
     // Label for current selection
     let cur_label: String = if app.selected_template_idx == 0 {
-        "Aucun (défaut)".into()
+        app.lang.t("card.theme_none")
     } else if app.selected_template_idx <= n {
-        format!("Intégré : {}", template::BUILTIN[app.selected_template_idx - 1].name)
+        let name = builtin_name(app, &template::BUILTIN[app.selected_template_idx - 1]);
+        app.lang.tf("card.theme_builtin", &[("name", &name)])
     } else if app.selected_template_idx == ci {
-        "Personnalisé (fichier)".into()
+        app.lang.t("card.theme_custom")
     } else {
         let ri = app.selected_template_idx - rb;
         app.remote_templates.get(ri)
-            .map(|t| format!("GitHub : {}", t.name))
+            .map(|t| app.lang.tf("card.theme_github", &[("name", &t.name)]))
             .unwrap_or_else(|| "—".into())
     };
 
@@ -265,17 +267,17 @@ fn show_template_selector(app: &mut RustyQrApp, ui: &mut Ui) -> bool {
         .width(220.0)
         .show_ui(ui, |ui| {
             // None
-            if ui.selectable_label(app.selected_template_idx == 0, "Aucun (défaut)").clicked() {
+            if ui.selectable_label(app.selected_template_idx == 0, app.lang.t("card.theme_none")).clicked() {
                 apply_template(app, 0);
                 changed = true;
             }
             // Built-ins
             ui.separator();
-            ui.label(egui::RichText::new("Intégrés").weak().small());
+            ui.label(egui::RichText::new(app.lang.t("card.builtin_group")).weak().small());
             for i in 0..n {
                 let t   = &template::BUILTIN[i];
                 let idx = i + 1;
-                let lbl = format!("{} — {}", t.name, t.description);
+                let lbl = format!("{} — {}", builtin_name(app, t), app.lang.t(&format!("template.{}.desc", t.id)));
                 if ui.selectable_label(app.selected_template_idx == idx, lbl).clicked() {
                     apply_template(app, idx);
                     changed = true;
@@ -285,7 +287,7 @@ fn show_template_selector(app: &mut RustyQrApp, ui: &mut Ui) -> bool {
             if app.custom_template_svg.is_some() {
                 ui.separator();
                 if ui.selectable_label(app.selected_template_idx == ci,
-                    "Personnalisé (fichier)").clicked()
+                    app.lang.t("card.theme_custom")).clicked()
                 {
                     apply_template(app, ci);
                     changed = true;
@@ -315,7 +317,7 @@ fn show_template_selector(app: &mut RustyQrApp, ui: &mut Ui) -> bool {
                                 let _ = tx.send(crate::template::fetch_remote_svg(&file));
                             });
                             app.remote_svg_dl = Some((i, rx));
-                            app.remote_fetch_status = Some((true, "Téléchargement du thème…".into()));
+                            app.remote_fetch_status = Some((true, app.lang.t("status.theme_downloading")));
                         }
                         changed = true;
                     }
@@ -331,9 +333,9 @@ fn show_template_selector(app: &mut RustyQrApp, ui: &mut Ui) -> bool {
     ui.add_space(4.0);
     ui.horizontal(|ui| {
         // Load custom SVG file
-        if ui.button("\u{1F4C1} Fichier SVG").clicked() {
+        if ui.button(app.lang.t("card.svg_file")).clicked() {
             if let Some(path) = rfd::FileDialog::new()
-                .add_filter("SVG template", &["svg"])
+                .add_filter(app.lang.t("export_format.svg_template"), &["svg"])
                 .pick_file()
             {
                 match std::fs::read_to_string(&path) {
@@ -343,7 +345,7 @@ fn show_template_selector(app: &mut RustyQrApp, ui: &mut Ui) -> bool {
                         changed = true;
                     }
                     Err(e) => {
-                        app.card_export_status = Some((false, format!("\u{2717} Lecture : {e}")));
+                        app.card_export_status = Some((false, format!("\u{2717} {}", app.lang.tf("status.read_error", &[("error", &e.to_string())]))));
                     }
                 }
             }
@@ -353,7 +355,7 @@ fn show_template_selector(app: &mut RustyQrApp, ui: &mut Ui) -> bool {
         let fetching = app.remote_fetch_rx.is_some();
         let btn_label = if fetching { "\u{23F3}" } else { "\u{1F504}" };
         if ui.add_enabled(!fetching, egui::Button::new(btn_label))
-            .on_hover_text("Revérifier les thèmes GitHub")
+            .on_hover_text(app.lang.t("card.recheck_themes"))
             .clicked()
         {
             // Reset so we can fetch again even if already done
@@ -380,13 +382,18 @@ fn show_template_selector(app: &mut RustyQrApp, ui: &mut Ui) -> bool {
     changed
 }
 
+/// Name of a built-in template in the user language.
+fn builtin_name(app: &RustyQrApp, t: &template::BuiltinTemplate) -> String {
+    app.lang.t(&format!("template.{}.name", t.id))
+}
+
 fn trigger_remote_fetch(app: &mut RustyQrApp) {
     let (tx, rx) = std::sync::mpsc::channel();
     std::thread::spawn(move || {
         let _ = tx.send(crate::template::fetch_remote_index());
     });
     app.remote_fetch_rx = Some(rx);
-    app.remote_fetch_status = Some((true, "V\u{E9}rification en ligne\u{2026}".into()));
+    app.remote_fetch_status = Some((true, app.lang.t("status.checking_online")));
 }
 
 /// Apply a template selection: update index, detect fields + colors, mark preview dirty.
@@ -418,7 +425,7 @@ fn apply_template(app: &mut RustyQrApp, idx: usize) {
         if let Some(c) = ac { app.card.accent_color = c; }
 
         // Detect {{Fx}} text fields
-        let labels   = app.card.layout.field_labels();
+        let labels   = app.card.layout.field_label_keys();
         let detected = template::detect_fields(svg, labels);
         let old_f    = std::mem::replace(&mut app.template_field_data, detected);
         for tf in &mut app.template_field_data {
@@ -536,7 +543,7 @@ fn show_egui_preview(app: &RustyQrApp, ui: &mut Ui) {
     } else {
         app.card.fields.iter().map(|f| (f.as_str(), true)).collect()
     };
-    let labels = app.card.layout.field_labels();
+    let labels = app.card.layout.field_label_keys();
 
     let text_x = match app.card.layout {
         CardLayout::BusinessCard => qr_x + qr_sz + dh * 0.07,
@@ -614,18 +621,21 @@ fn export_card(app: &mut RustyQrApp, fmt: CardExportFmt) {
     if app.card_export_rx.is_some() { return; } // already exporting
 
     let (ext, filter) = match fmt {
-        CardExportFmt::Svg  => ("svg",  "SVG Vector"),
-        CardExportFmt::Pdf  => ("pdf",  "PDF Document"),
-        CardExportFmt::Png  => ("png",  "PNG Image"),
-        CardExportFmt::Jpeg => ("jpg",  "JPEG Image"),
+        CardExportFmt::Svg  => ("svg",  "export_format.svg"),
+        CardExportFmt::Pdf  => ("pdf",  "export_format.pdf"),
+        CardExportFmt::Png  => ("png",  "export_format.png"),
+        CardExportFmt::Jpeg => ("jpg",  "export_format.jpg"),
     };
 
     let Some(path) = rfd::FileDialog::new()
-        .add_filter(filter, &[ext])
-        .set_file_name(&format!("carte_qr.{ext}"))
+        .add_filter(app.lang.t(filter), &[ext])
+        .set_file_name(&format!("{}.{ext}", app.lang.t("card.export_file_name")))
         .save_file()
     else { return; };
     let path_str = path.to_string_lossy().into_owned();
+    // Messages are resolved now: the export thread has no access to the language.
+    let rasterize_err = app.lang.t("status.rasterize_error");
+    let exported_msg  = app.lang.tf("status.exported", &[("path", &path_str)]);
 
     // Build the SVG string (always fast — pure string substitution + QR embed)
     let matrix_ref = app.qr_matrix.as_ref();
@@ -643,7 +653,7 @@ fn export_card(app: &mut RustyQrApp, fmt: CardExportFmt) {
         // ── SVG: plain write, no rasterization needed ─────────────────────
         CardExportFmt::Svg => {
             app.card_export_status = Some(match std::fs::write(&path_str, &svg) {
-                Ok(_)  => (true,  format!("\u{2713} SVG export\u{E9} : {path_str}")),
+                Ok(_)  => (true,  format!("\u{2713} {}", app.lang.tf("status.exported", &[("path", &path_str)]))),
                 Err(e) => (false, format!("\u{2717} {e}")),
             });
         }
@@ -653,7 +663,7 @@ fn export_card(app: &mut RustyQrApp, fmt: CardExportFmt) {
             let (orig_w, orig_h) = app.card.layout.canvas_px();
             let (tx, rx) = std::sync::mpsc::channel();
             app.card_export_rx    = Some(rx);
-            app.card_export_status = Some((true, "\u{23F3} Export en cours\u{2026}".into()));
+            app.card_export_status = Some((true, format!("\u{23F3} {}", app.lang.t("status.exporting"))));
 
             std::thread::spawn(move || {
                 const DPI_SCALE: f32 = 300.0 / 96.0; // 300 DPI output
@@ -663,7 +673,7 @@ fn export_card(app: &mut RustyQrApp, fmt: CardExportFmt) {
                         match crate::template::svg_to_rgba_scaled(&svg, DPI_SCALE) {
                             Some((rgba, w, h)) =>
                                 crate::export::pdf::export_from_rgba(&rgba, w, h, orig_w, orig_h, &path_str),
-                            None => Err("Impossible de rast\u{E9}riser le SVG".into()),
+                            None => Err(rasterize_err.clone()),
                         }
                     }
                     CardExportFmt::Png => {
@@ -671,7 +681,7 @@ fn export_card(app: &mut RustyQrApp, fmt: CardExportFmt) {
                             Some((rgba, w, h)) =>
                                 image::save_buffer(&path_str, &rgba, w, h, image::ColorType::Rgba8)
                                     .map_err(|e| e.to_string()),
-                            None => Err("Impossible de rast\u{E9}riser le SVG".into()),
+                            None => Err(rasterize_err.clone()),
                         }
                     }
                     CardExportFmt::Jpeg => {
@@ -689,14 +699,14 @@ fn export_card(app: &mut RustyQrApp, fmt: CardExportFmt) {
                                 image::save_buffer(&path_str, &rgb, w, h, image::ColorType::Rgb8)
                                     .map_err(|e| e.to_string())
                             }
-                            None => Err("Impossible de rast\u{E9}riser le SVG".into()),
+                            None => Err(rasterize_err.clone()),
                         }
                     }
                     CardExportFmt::Svg => unreachable!(),
                 };
 
                 let msg = match result {
-                    Ok(_)  => Ok(format!("\u{2713} Export\u{E9} : {path_str}")),
+                    Ok(_)  => Ok(format!("\u{2713} {}", exported_msg)),
                     Err(e) => Err(format!("\u{2717} {e}")),
                 };
                 let _ = tx.send(msg);

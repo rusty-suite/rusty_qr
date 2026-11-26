@@ -4,11 +4,12 @@
 use super::encoder::QrMatrix;
 
 #[derive(Debug)]
-pub struct MicroQrError(pub String);
+/// Data does not fit in any Micro QR version (payload length in bytes).
+pub struct MicroQrError(pub usize);
 
 impl std::fmt::Display for MicroQrError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
+        write!(f, "data too long for Micro QR ({} bytes, max 15)", self.0)
     }
 }
 
@@ -109,10 +110,7 @@ fn select_version(data_len: usize) -> Result<(u8, u8), MicroQrError> {
     for &(ver, ec, cap) in BYTE_CAPACITY {
         if cap >= data_len { return Ok((ver, ec)); }
     }
-    Err(MicroQrError(format!(
-        "Données trop longues pour Micro QR ({} octets, max 15). Utilisez le QR standard.",
-        data_len
-    )))
+    Err(MicroQrError(data_len))
 }
 
 fn cap(ver: u8, ec: u8) -> (usize, usize, usize) {

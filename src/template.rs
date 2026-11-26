@@ -30,100 +30,82 @@ use crate::style::{profile::StyleProfile, renderer};
 
 // ─── Built-in templates (compiled-in) ────────────────────────────────────────
 
+/// A compiled-in SVG theme. Its display name and description are translated
+/// with the keys `template.<id>.name` / `template.<id>.desc`.
 pub struct BuiltinTemplate {
-    #[allow(dead_code)]
     pub id:          &'static str,
-    pub name:        &'static str,
-    pub description: &'static str,
     pub svg:         &'static str,
 }
 
 pub const BUILTIN: &[BuiltinTemplate] = &[
     // ── Thèmes classiques ─────────────────────────────────────────────────────
     BuiltinTemplate {
-        id: "classic", name: "Classique",
-        description: "Fond blanc avec bordure, texte organis\u{E9} par le th\u{E8}me",
+        id: "classic",
         svg: include_str!("../templates/classic.svg"),
     },
     BuiltinTemplate {
-        id: "dark", name: "Sombre",
-        description: "Fond sombre, halo d'accent, texte clair",
+        id: "dark",
         svg: include_str!("../templates/dark.svg"),
     },
     BuiltinTemplate {
-        id: "minimal", name: "Minimal",
-        description: "Fond uni, aucune d\u{E9}coration, typographie \u{E9}pur\u{E9}e",
+        id: "minimal",
         svg: include_str!("../templates/minimal.svg"),
     },
     BuiltinTemplate {
-        id: "badge", name: "Badge",
-        description: "Liser\u{E9} color\u{E9}, style acr\u{E9}ditation / badge",
+        id: "badge",
         svg: include_str!("../templates/badge.svg"),
     },
     BuiltinTemplate {
-        id: "modern", name: "\u{C9}pur\u{E9} Pro",
-        description: "Bandeau d\u{E9}grad\u{E9}, coins arrondis, palette personnalisable",
+        id: "modern",
         svg: include_str!("../templates/modern.svg"),
     },
     BuiltinTemplate {
-        id: "neon", name: "N\u{E9}on",
-        description: "Fond sombre, bordure et texte lumineux style n\u{E9}on",
+        id: "neon",
         svg: include_str!("../templates/neon.svg"),
     },
     BuiltinTemplate {
-        id: "gradient", name: "D\u{E9}grad\u{E9}",
-        description: "Panneau gauche en d\u{E9}grad\u{E9}, zone texte claire \u{E0} droite",
+        id: "gradient",
         svg: include_str!("../templates/gradient.svg"),
     },
     // ── Nouveaux thèmes artistiques ───────────────────────────────────────────
     BuiltinTemplate {
-        id: "retro", name: "R\u{E9}tro Vintage",
-        description: "Papier cr\u{E8}me, bordure perfore\u{E9}e, typographie s\u{E9}rif chaleureuse",
+        id: "retro",
         svg: include_str!("../templates/retro.svg"),
     },
     BuiltinTemplate {
-        id: "aurora", name: "Aurore Bor\u{E9}ale",
-        description: "Ciel nocturne, nappes aurora violet\u{2013}turquoise, \u{E9}toiles",
+        id: "aurora",
         svg: include_str!("../templates/aurora.svg"),
     },
     BuiltinTemplate {
-        id: "swiss", name: "Design Suisse",
-        description: "Style typographique international, rouge vif, grille stricte",
+        id: "swiss",
         svg: include_str!("../templates/swiss.svg"),
     },
     BuiltinTemplate {
-        id: "glass", name: "Verre Givr\u{E9}",
-        description: "Glassmorphisme : fond color\u{E9}, panneau translucide givr\u{E9}",
+        id: "glass",
         svg: include_str!("../templates/glass.svg"),
     },
     BuiltinTemplate {
-        id: "zen", name: "Zen / Sumi-e",
-        description: "Esth\u{E9}tique japonaise : papier washi, coup de pinceau, sceau rouge",
+        id: "zen",
         svg: include_str!("../templates/zen.svg"),
     },
     BuiltinTemplate {
-        id: "cyber", name: "Cyberpunk",
-        description: "Fond noir, jaune \u{E9}lectrique, lignes de scan, terminal monospace",
+        id: "cyber",
         svg: include_str!("../templates/cyber.svg"),
     },
     BuiltinTemplate {
-        id: "artdeco", name: "Art D\u{E9}co",
-        description: "Fond sombre riche, ornements g\u{E9}om\u{E9}triques dor\u{E9}s, \u{E9}l\u{E9}gance 1920",
+        id: "artdeco",
         svg: include_str!("../templates/artdeco.svg"),
     },
     BuiltinTemplate {
-        id: "brutal", name: "Brutaliste",
-        description: "Blanc\u{2013}noir pur, bordure \u{E9}paisse, ombre port\u{E9}e d\u{E9}cal\u{E9}e, accent rouge",
+        id: "brutal",
         svg: include_str!("../templates/brutal.svg"),
     },
     BuiltinTemplate {
-        id: "nordic", name: "Scandinave",
-        description: "Bleu-gris doux, formes organiques, vert for\u{EA}t, harmonie naturelle",
+        id: "nordic",
         svg: include_str!("../templates/nordic.svg"),
     },
     BuiltinTemplate {
-        id: "isometric", name: "Tech Is\u{F4}m\u{E9}trique",
-        description: "Navy profond, grille isom\u{E9}trique cyan, interface donn\u{E9}es futuriste",
+        id: "isometric",
         svg: include_str!("../templates/isometric.svg"),
     },
 ];
@@ -197,7 +179,7 @@ pub fn detect_colors(template: &str) -> Vec<TemplateColor> {
         let (hex_str, label) = if let Some(pipe) = inner.find('|') {
             (&inner[..pipe], inner[pipe+1..].to_string())
         } else {
-            (inner, format!("Couleur C{i}"))
+            (inner, format!("C{i}"))
         };
         if hex_str.len() < 6 { return None; }
         let r = u8::from_str_radix(&hex_str[0..2], 16).ok()?;
@@ -219,7 +201,7 @@ pub fn detect_fields(template: &str, layout_labels: &[&str]) -> Vec<TemplateFiel
             return None;
         }
         let default = extract_default(template, i);
-        let label   = layout_labels.get(i).copied().unwrap_or("Champ").to_string();
+        let label   = layout_labels.get(i).copied().unwrap_or("card.field").to_string();
         Some(TemplateField { var: format!("F{i}"), label, default, value: String::new(), visible: true })
     }).collect()
 }
@@ -698,7 +680,7 @@ pub fn fetch_remote_index() -> Result<Vec<RemoteTemplate>, String> {
         .map_err(|e| e.to_string())?;
     let json: serde_json::Value =
         resp.into_json::<serde_json::Value>().map_err(|e| e.to_string())?;
-    let arr = json.as_array().ok_or_else(|| "index.json invalide".to_string())?;
+    let arr = json.as_array().ok_or_else(|| "invalid index.json".to_string())?;
     Ok(arr.iter().filter_map(|v| {
         Some(RemoteTemplate {
             id:          v["id"].as_str()?.to_string(),
