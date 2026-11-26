@@ -43,14 +43,15 @@ impl ExportFormat {
         }
     }
 
-    pub fn filter_name(&self) -> &'static str {
+    /// Translation key of the file-dialog filter name (section `export_format`).
+    pub fn filter_key(&self) -> &'static str {
         match self {
-            Self::Png  => "PNG Image",
-            Self::Jpg  => "JPEG Image",
-            Self::Svg  => "SVG Vector",
-            Self::Pdf  => "PDF Document",
-            Self::Eps  => "EPS PostScript",
-            Self::Docx => "Word Document",
+            Self::Png  => "export_format.png",
+            Self::Jpg  => "export_format.jpg",
+            Self::Svg  => "export_format.svg",
+            Self::Pdf  => "export_format.pdf",
+            Self::Eps  => "export_format.eps",
+            Self::Docx => "export_format.docx",
         }
     }
 }

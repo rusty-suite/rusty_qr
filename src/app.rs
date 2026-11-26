@@ -77,7 +77,7 @@ pub struct RustyQrApp {
     // ── QR creator ────────────────────────────────────────────────────────────
     pub form: QrForm,
     pub qr_matrix: Option<Vec<Vec<bool>>>,
-    pub qr_error: Option<String>,
+    pub qr_error: Option<crate::qr::encoder::EncoderError>,
     pub preview_texture: Option<TextureHandle>,
     pub preview_dirty: bool,
 
@@ -161,7 +161,7 @@ impl RustyQrApp {
             qr_error: None,
             preview_texture: None,
             preview_dirty: true,
-            profiles: load_profiles(),
+            profiles: load_profiles(&lang),
             selected_profile: 0,
             confirm_delete_profile: None,
             profiles_dirty: false,
@@ -222,7 +222,7 @@ impl RustyQrApp {
     pub fn regenerate_qr(&mut self) {
         match crate::qr::encoder::encode(&self.form) {
             Ok(m)  => { self.qr_matrix = Some(m); self.qr_error = None; }
-            Err(e) => { self.qr_matrix = None; self.qr_error = Some(e.to_string()); }
+            Err(e) => { self.qr_matrix = None; self.qr_error = Some(e); }
         }
         self.mark_qr_dirty();
     }
@@ -251,7 +251,7 @@ impl eframe::App for RustyQrApp {
                         if let Some(profile) = self.profiles.get_mut(self.selected_profile) {
                             profile.logo_path = p.clone();
                         }
-                        self.logo_dl_status = Some((true, format!("\u{2713} Image charg\u{E9}e : {p}")));
+                        self.logo_dl_status = Some((true, format!("\u{2713} {}", self.lang.tf("status.image_loaded", &[("path", &p)]))));
                         self.profiles_dirty = true;
                         self.mark_qr_dirty();
                     }
@@ -273,7 +273,7 @@ impl eframe::App for RustyQrApp {
                     Ok(list) => {
                         let count = list.len();
                         self.remote_langs = list;
-                        (true, format!("\u{1F7E2} GitHub — {count} langue(s) repo"))
+                        (true, format!("\u{1F7E2} {}", self.lang.tf("lang_page.status_online", &[("count", &count.to_string())])))
                     }
                     Err(e) => {
                         self.remote_langs.clear();
@@ -283,9 +283,9 @@ impl eframe::App for RustyQrApp {
                             || e.to_lowercase().contains("network")
                             || e.to_lowercase().contains("refused");
                         let msg = if offline {
-                            "\u{1F534} Hors-ligne — langues locales uniquement".into()
+                            format!("\u{1F534} {}", self.lang.t("lang_page.status_offline"))
                         } else {
-                            format!("\u{26A0} GitHub : {e}")
+                            format!("\u{26A0} {}", self.lang.tf("lang_page.status_github_error", &[("error", &e)]))
                         };
                         (false, msg)
                     }
@@ -301,14 +301,14 @@ impl eframe::App for RustyQrApp {
                         Ok(new_lang) => {
                             crate::lang::Lang::save_choice(&self.work_dir, &stem);
                             self.lang = new_lang;
-                            self.lang_remote_fetch_status = Some((true, format!("\u{2B07} Langue install\u{E9}e : {stem}")));
+                            self.lang_remote_fetch_status = Some((true, format!("\u{2B07} {}", self.lang.tf("lang_page.status_installed", &[("stem", &stem)]))));
                         }
                         Err(e) => {
-                            self.lang_remote_fetch_status = Some((false, format!("\u{2717} Chargement langue : {e}")));
+                            self.lang_remote_fetch_status = Some((false, format!("\u{2717} {}", self.lang.tf("lang_page.status_load_error", &[("error", &e)]))));
                         }
                     },
                     Err(e) => {
-                        self.lang_remote_fetch_status = Some((false, format!("\u{2717} T\u{E9}l\u{E9}chargement langue : {e}")));
+                        self.lang_remote_fetch_status = Some((false, format!("\u{2717} {}", self.lang.tf("lang_page.status_download_error", &[("error", &e)]))));
                     }
                 }
             }
@@ -335,9 +335,9 @@ impl eframe::App for RustyQrApp {
                         let n = extras.len();
                         self.remote_templates = extras;
                         if n == 0 {
-                            (true, "\u{1F7E2} En ligne \u{2014} aucun th\u{E8}me suppl\u{E9}mentaire".into())
+                            (true, format!("\u{1F7E2} {}", self.lang.t("status.themes_online_none")))
                         } else {
-                            (true, format!("\u{1F7E2} En ligne \u{2014} {n} th\u{E8}me(s) suppl\u{E9}mentaire(s)"))
+                            (true, format!("\u{1F7E2} {}", self.lang.tf("status.themes_online_n", &[("n", &n.to_string())])))
                         }
                     }
                     Err(e) => {
@@ -347,9 +347,9 @@ impl eframe::App for RustyQrApp {
                             || e.to_lowercase().contains("network")
                             || e.to_lowercase().contains("refused");
                         let msg = if offline {
-                            "\u{1F534} Hors-ligne \u{2014} th\u{E8}mes int\u{E9}gr\u{E9}s uniquement".into()
+                            format!("\u{1F534} {}", self.lang.t("status.themes_offline"))
                         } else {
-                            format!("\u{26A0} GitHub : {e}")
+                            format!("\u{26A0} {}", self.lang.tf("status.github_error", &[("error", &e)]))
                         };
                         (false, msg)
                     }
@@ -375,7 +375,7 @@ impl eframe::App for RustyQrApp {
                             if let Some(c) = bg { self.card.bg_color     = c; }
                             if let Some(c) = fg { self.card.text_color   = c; }
                             if let Some(c) = ac { self.card.accent_color = c; }
-                            let labels   = self.card.layout.field_labels();
+                            let labels   = self.card.layout.field_label_keys();
                             let detected = crate::template::detect_fields(&svg, labels);
                             let old_f    = std::mem::replace(&mut self.template_field_data, detected);
                             for tf in &mut self.template_field_data {
@@ -393,9 +393,9 @@ impl eframe::App for RustyQrApp {
                             }
                         }
                         self.template_preview_dirty = true;
-                        (true, "\u{2B07} Th\u{E8}me t\u{E9}l\u{E9}charg\u{E9} \u{2713}".into())
+                        (true, format!("\u{2B07} {} \u{2713}", self.lang.t("status.theme_downloaded")))
                     }
-                    Err(e) => (false, format!("\u{2717} T\u{E9}l\u{E9}chargement : {e}")),
+                    Err(e) => (false, format!("\u{2717} {}", self.lang.tf("status.download_error", &[("error", &e)]))),
                 });
                 self.remote_svg_dl = None;
             }
@@ -469,8 +469,9 @@ impl eframe::App for RustyQrApp {
         // ── Erreur de langue (modal au premier démarrage sans fichier) ────────
         if self.lang_error.is_some() {
             let err_msg = self.lang_error.clone().unwrap_or_default();
+            let ok_label = self.lang.t("errors.ok_button");
             let mut dismiss = false;
-            egui::Window::new("\u{26A0} Language / Langue")
+            egui::Window::new(format!("\u{26A0} {}", self.lang.t("errors.lang_dialog_title")))
                 .collapsible(false)
                 .resizable(false)
                 .fixed_size([360.0, 110.0])
@@ -483,7 +484,7 @@ impl eframe::App for RustyQrApp {
                     ui.add_space(4.0);
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         ui.add_space(4.0);
-                        if ui.button("  OK  ").clicked() { dismiss = true; }
+                        if ui.button(&ok_label).clicked() { dismiss = true; }
                     });
                     ui.add_space(4.0);
                 });
@@ -506,7 +507,7 @@ impl eframe::App for RustyQrApp {
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     ui.add_space(4.0);
                     if ui.add(egui::Button::new("\u{2699}").frame(false))
-                        .on_hover_text("\u{00C0} propos")
+                        .on_hover_text(self.lang.t("nav.about"))
                         .clicked()
                     {
                         self.show_about = true;
@@ -551,7 +552,8 @@ impl eframe::App for RustyQrApp {
             let repo_url      = self.lang.t("app.repo_url");
             let app_author    = self.lang.t("app.author");
             let app_license   = self.lang.t("app.license");
-            let app_version   = self.lang.t("app.version");
+            // Single source of truth for the version: Cargo.toml.
+            let app_version   = format!("v{}", env!("CARGO_PKG_VERSION"));
             let btn_close     = self.lang.t("about.close_button");
             egui::Window::new(about_title)
                 .collapsible(false)
@@ -618,22 +620,10 @@ impl eframe::App for RustyQrApp {
             let lp_open      = self.lang.t("lang_page.open_folder_btn");
             let lp_close     = self.lang.t("lang_page.close_button");
             let lp_no_files  = self.lang.t("lang_page.no_files");
-            let lp_reload    = {
-                let s = self.lang.t("lang_page.reload_git_btn");
-                if s == "lang_page.reload_git_btn" {
-                    "Refresh Git".into()
-                } else {
-                    s
-                }
-            };
-            let lp_local     = {
-                let s = self.lang.t("lang_page.local_badge");
-                if s == "lang_page.local_badge" { "[local]".into() } else { s }
-            };
-            let lp_repo      = {
-                let s = self.lang.t("lang_page.repo_badge");
-                if s == "lang_page.repo_badge" { "[git]".into() } else { s.replace("repo", "git").replace("Repo", "Git") }
-            };
+            // Missing keys fall back to the bundled English strings (see `Lang::t`).
+            let lp_reload    = self.lang.t("lang_page.reload_git_btn");
+            let lp_local     = self.lang.t("lang_page.local_badge");
+            let lp_repo      = self.lang.t("lang_page.repo_badge");
 
             // Nom d'affichage de la langue active
             let active_display = lang_infos.iter()
@@ -763,10 +753,7 @@ impl eframe::App for RustyQrApp {
                         ui.label(egui::RichText::new(&lp_folder).weak().small());
                         ui.label(egui::RichText::new(&lang_dir_path).small().monospace());
                         if ui.small_button(&lp_open).clicked() {
-                            #[cfg(target_os = "windows")]
-                            let _ = std::process::Command::new("explorer")
-                                .arg(&work_dir.join("lang"))
-                                .spawn();
+                            open_folder(&work_dir.join("lang"));
                         }
                     });
 
@@ -802,7 +789,7 @@ impl eframe::App for RustyQrApp {
                         let _ = tx.send(result);
                     });
                     self.lang_download_rx = Some(rx);
-                    self.lang_remote_fetch_status = Some((true, "T\u{E9}l\u{E9}chargement de la langue…".into()));
+                    self.lang_remote_fetch_status = Some((true, self.lang.t("lang_page.status_downloading")));
                 }
             }
             if close { self.show_lang_settings = false; }
@@ -929,6 +916,17 @@ fn setup_fonts(ctx: &egui::Context) {
     }
 }
 
+/// Opens a folder in the system file manager (Windows, macOS, Linux).
+fn open_folder(path: &std::path::Path) {
+    #[cfg(target_os = "windows")]
+    let program = "explorer";
+    #[cfg(target_os = "macos")]
+    let program = "open";
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    let program = "xdg-open";
+    let _ = std::process::Command::new(program).arg(path).spawn();
+}
+
 fn trigger_remote_lang_fetch(app: &mut RustyQrApp) {
     if app.lang_remote_fetch_rx.is_some() {
         return;
@@ -938,5 +936,5 @@ fn trigger_remote_lang_fetch(app: &mut RustyQrApp) {
         let _ = tx.send(crate::lang::Lang::fetch_remote_index());
     });
     app.lang_remote_fetch_rx = Some(rx);
-    app.lang_remote_fetch_status = Some((true, "V\u{E9}rification GitHub des langues…".into()));
+    app.lang_remote_fetch_status = Some((true, app.lang.t("lang_page.status_checking")));
 }
