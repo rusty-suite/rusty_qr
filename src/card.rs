@@ -28,15 +28,16 @@ impl CardLayout {
         Self::Ticket,
     ];
 
-    pub fn label(&self) -> &'static str {
+    /// Translation key of the layout name (section `card_layout`).
+    pub fn label_key(&self) -> &'static str {
         match self {
-            Self::BusinessCard => "Carte de visite (85\u{D7}54 mm)",
-            Self::Label        => "\u{C9}tiquette QR (60\u{D7}60 mm)",
-            Self::Badge        => "Badge (90\u{D7}60 mm)",
-            Self::Flyer        => "Flyer compact (A6)",
-            Self::Square       => "Carr\u{E9} (80\u{D7}80 mm)",
-            Self::Poster       => "Affiche A5 (148\u{D7}210 mm)",
-            Self::Ticket       => "Ticket / Coupon (90\u{D7}50 mm)",
+            Self::BusinessCard => "card_layout.business_card",
+            Self::Label        => "card_layout.label",
+            Self::Badge        => "card_layout.badge",
+            Self::Flyer        => "card_layout.flyer",
+            Self::Square       => "card_layout.square",
+            Self::Poster       => "card_layout.poster",
+            Self::Ticket       => "card_layout.ticket",
         }
     }
 
@@ -56,15 +57,16 @@ impl CardLayout {
     }
 
     /// Field labels for the text zones.
-    pub fn field_labels(&self) -> &'static [&'static str] {
+    /// Translation keys of the text fields of this layout (section `card_field`).
+    pub fn field_label_keys(&self) -> &'static [&'static str] {
         match self {
-            Self::BusinessCard => &["Nom", "Titre / Poste", "T\u{E9}l\u{E9}phone", "Email", "Site web"],
-            Self::Label        => &["Titre", "Description"],
-            Self::Badge        => &["Nom", "Organisation", "Identifiant"],
-            Self::Flyer        => &["Titre", "Sous-titre", "Description", "Contact"],
-            Self::Square       => &["Titre", "Sous-titre", "Contact"],
-            Self::Poster       => &["Titre", "Accroche", "Description", "Contact", "Site web"],
-            Self::Ticket       => &["\u{C9}v\u{E9}nement", "Date / Lieu", "R\u{E9}f\u{E9}rence"],
+            Self::BusinessCard => &["card_field.name", "card_field.job_title", "card_field.phone", "card_field.email", "card_field.website"],
+            Self::Label        => &["card_field.title", "card_field.description"],
+            Self::Badge        => &["card_field.name", "card_field.organization", "card_field.identifier"],
+            Self::Flyer        => &["card_field.title", "card_field.subtitle", "card_field.description", "card_field.contact"],
+            Self::Square       => &["card_field.title", "card_field.subtitle", "card_field.contact"],
+            Self::Poster       => &["card_field.title", "card_field.tagline", "card_field.description", "card_field.contact", "card_field.website"],
+            Self::Ticket       => &["card_field.event", "card_field.date_place", "card_field.reference"],
         }
     }
 }
@@ -77,7 +79,7 @@ pub struct CardConfig {
     pub bg_color: [u8; 3],
     pub text_color: [u8; 3],
     pub accent_color: [u8; 3],
-    pub fields: Vec<String>,   // indexed by layout.field_labels()
+    pub fields: Vec<String>,   // indexed by layout.field_label_keys()
 }
 
 impl CardConfig {
@@ -87,7 +89,7 @@ impl CardConfig {
             bg_color: [255, 255, 255],
             text_color: [30, 30, 30],
             accent_color: [50, 100, 200],
-            fields: layout.field_labels().iter().map(|_| String::new()).collect(),
+            fields: layout.field_label_keys().iter().map(|_| String::new()).collect(),
         }
     }
 }
@@ -130,7 +132,7 @@ pub fn to_svg(config: &CardConfig, matrix: Option<&QrMatrix>, profile: &StylePro
 "#
             ));
 
-            let labels = config.layout.field_labels();
+            let labels = config.layout.field_label_keys();
             let mut ty = qr_y as i32 + 8;
             for (i, field) in config.fields.iter().enumerate() {
                 if field.is_empty() { continue; }
@@ -162,7 +164,7 @@ pub fn to_svg(config: &CardConfig, matrix: Option<&QrMatrix>, profile: &StylePro
             embed_qr_svg(&mut svg, matrix, profile, qr_x, qr_y, qr_sz);
 
             let text_y_base = qr_y + qr_sz + 10;
-            let labels = config.layout.field_labels();
+            let labels = config.layout.field_label_keys();
             let mut ty = text_y_base as i32;
             for (i, field) in config.fields.iter().enumerate() {
                 if field.is_empty() { continue; }
@@ -194,7 +196,7 @@ pub fn to_svg(config: &CardConfig, matrix: Option<&QrMatrix>, profile: &StylePro
 
             let text_x = (qr_x + qr_sz + 16) as i32;
             let text_w = w as i32 - text_x - 10;
-            let labels = config.layout.field_labels();
+            let labels = config.layout.field_label_keys();
             let mut ty = (h as f32 * 0.32) as i32;
             for (i, field) in config.fields.iter().enumerate() {
                 if field.is_empty() { continue; }
@@ -223,7 +225,7 @@ pub fn to_svg(config: &CardConfig, matrix: Option<&QrMatrix>, profile: &StylePro
             embed_qr_svg(&mut svg, matrix, profile, qr_x, qr_y, qr_sz);
 
             let ty_base = (qr_y + qr_sz + 14) as i32;
-            let labels = config.layout.field_labels();
+            let labels = config.layout.field_label_keys();
             let mut ty = ty_base;
             let cx = (w / 2) as i32;
             for (i, field) in config.fields.iter().enumerate() {
@@ -253,7 +255,7 @@ pub fn to_svg(config: &CardConfig, matrix: Option<&QrMatrix>, profile: &StylePro
             let qr_y  = (h as f32 * 0.06) as u32;
             embed_qr_svg(&mut svg, matrix, profile, qr_x, qr_y, qr_sz);
 
-            let labels = config.layout.field_labels();
+            let labels = config.layout.field_label_keys();
             let mut ty = (qr_y + qr_sz + 12) as i32;
             let cx = (w / 2) as i32;
             for (i, field) in config.fields.iter().enumerate() {
@@ -289,7 +291,7 @@ pub fn to_svg(config: &CardConfig, matrix: Option<&QrMatrix>, profile: &StylePro
             let qr_y  = (h as f32 * 0.06) as u32;
             embed_qr_svg(&mut svg, matrix, profile, qr_x, qr_y, qr_sz);
 
-            let labels = config.layout.field_labels();
+            let labels = config.layout.field_label_keys();
             let mut ty = (qr_y + qr_sz + 20) as i32;
             let cx = (w / 2) as i32;
             for (i, field) in config.fields.iter().enumerate() {
@@ -327,7 +329,7 @@ pub fn to_svg(config: &CardConfig, matrix: Option<&QrMatrix>, profile: &StylePro
             let text_w = w as i32 - text_x - 8;
             embed_qr_svg(&mut svg, matrix, profile, qr_x, qr_y, qr_sz);
 
-            let labels = config.layout.field_labels();
+            let labels = config.layout.field_label_keys();
             let mut ty = (h as f32 * 0.32) as i32;
             for (i, field) in config.fields.iter().enumerate() {
                 if field.is_empty() { continue; }
@@ -397,7 +399,7 @@ pub fn to_pdf(config: &CardConfig, matrix: Option<&QrMatrix>, profile: &StylePro
     let w_mm = w_px as f32 / DPI * 25.4;
     let h_mm = h_px as f32 / DPI * 25.4;
 
-    let (doc, page, layer) = PdfDocument::new("Carte QR", Mm(w_mm), Mm(h_mm), "Layer 1");
+    let (doc, page, layer) = PdfDocument::new("QR Card", Mm(w_mm), Mm(h_mm), "Layer 1");
     let lay = doc.get_page(page).get_layer(layer);
 
     // Background

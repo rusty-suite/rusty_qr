@@ -6,12 +6,12 @@ use crate::theme;
 
 pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
     ui.add_space(8.0);
-    theme::title(ui, "Exporter le code QR");
+    theme::title(ui, &app.lang.t("export_page.title"));
     ui.separator();
     ui.add_space(8.0);
 
     if app.qr_matrix.is_none() {
-        theme::status_warn(ui, "\u{26A0} G\u{E9}n\u{E9}rez d'abord un code QR dans l'onglet Cr\u{E9}er.");
+        theme::status_warn(ui, &format!("\u{26A0} {}", app.lang.t("export_page.generate_first")));
         return;
     }
 
@@ -20,7 +20,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
         .spacing([8.0, 8.0])
         .show(ui, |ui| {
             // Format
-            ui.label("Format :");
+            ui.label(app.lang.t("export_page.format"));
             egui::ComboBox::from_id_source("export_fmt")
                 .selected_text(app.export_format.label())
                 .show_ui(ui, |ui| {
@@ -31,7 +31,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
             ui.end_row();
 
             // Profil
-            ui.label("Profil de style :");
+            ui.label(app.lang.t("export_page.profile"));
             let names: Vec<String> = app.profiles.iter().map(|p| p.name.clone()).collect();
             egui::ComboBox::from_id_source("export_profile")
                 .selected_text(names.get(app.selected_profile).cloned().unwrap_or_default())
@@ -46,12 +46,12 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
             ui.end_row();
 
             // Path
-            ui.label("Chemin :");
+            ui.label(app.lang.t("export_page.path"));
             ui.horizontal(|ui| {
                 ui.text_edit_singleline(&mut app.export_path);
-                if ui.button("📁 Parcourir").clicked() {
+                if ui.button(app.lang.t("export_page.browse")).clicked() {
                     let ext = app.export_format.extension();
-                    let name = app.export_format.filter_name();
+                    let name = app.lang.t(app.export_format.filter_key());
                     if let Some(path) = rfd::FileDialog::new()
                         .add_filter(name, &[ext])
                         .set_file_name(&format!("qrcode.{ext}"))
@@ -66,15 +66,15 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
 
     ui.add_space(8.0);
 
-    if ui.button("💾 Exporter").clicked() {
+    if ui.button(app.lang.t("export_page.export")).clicked() {
         if app.export_path.is_empty() {
-            app.export_status = Some((false, "Choisissez un chemin de fichier.".into()));
+            app.export_status = Some((false, app.lang.t("export_page.choose_path")));
         } else if let Some(matrix) = &app.qr_matrix {
             let profile = app.current_profile().clone();
             let result = export::export(matrix, &profile, app.form.ec_level, app.export_format, &app.export_path);
             app.export_status = Some(match result {
-                Ok(_) => (true, format!("\u{2713} Export\u{E9} : {}", app.export_path)),
-                Err(e) => (false, format!("\u{2717} Erreur : {e}")),
+                Ok(_) => (true, format!("\u{2713} {}", app.lang.tf("status.exported", &[("path", &app.export_path)]))),
+                Err(e) => (false, format!("\u{2717} {}", app.lang.tf("status.export_error", &[("error", &e.to_string())]))),
             });
         }
     }

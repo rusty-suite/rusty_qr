@@ -80,7 +80,7 @@ pub fn export_from_rgba(
         .collect();
 
     let (doc, page, layer) =
-        PdfDocument::new("Carte QR", Mm(w_mm), Mm(h_mm), "Layer 1");
+        PdfDocument::new("QR Card", Mm(w_mm), Mm(h_mm), "Layer 1");
     let layer = doc.get_page(page).get_layer(layer);
 
     let xobj = ImageXObject {

@@ -6,13 +6,13 @@ use crate::theme;
 
 pub fn show_preview(app: &mut RustyQrApp, ui: &mut Ui, ctx: &Context) {
     ui.add_space(8.0);
-    theme::title(ui, "Aperçu");
+    theme::title(ui, &app.lang.t("preview.title"));
     ui.separator();
     ui.add_space(4.0);
 
     // Profile name indicator
     let profile_name = app.current_profile().name.clone();
-    ui.label(egui::RichText::new(format!("Profil: {}", profile_name)).small().weak());
+    ui.label(egui::RichText::new(app.lang.tf("preview.profile", &[("name", &profile_name)])).small().weak());
     ui.add_space(4.0);
 
     // Regenerate texture if dirty
@@ -44,8 +44,8 @@ pub fn show_preview(app: &mut RustyQrApp, ui: &mut Ui, ctx: &Context) {
     if let Some(tex) = &app.preview_texture {
         let size = egui::vec2(display_size, display_size);
         ui.add(egui::Image::new(tex).fit_to_exact_size(size));
-    } else if let Some(err) = &app.qr_error.clone() {
-        theme::status_err(ui, &format!("\u{2717} {err}"));
+    } else if let Some(err) = &app.qr_error {
+        theme::status_err(ui, &format!("\u{2717} {}", err.message(&app.lang)));
     } else {
         let rect = ui.allocate_exact_size(
             egui::vec2(display_size, display_size),
@@ -55,7 +55,7 @@ pub fn show_preview(app: &mut RustyQrApp, ui: &mut Ui, ctx: &Context) {
         ui.painter().text(
             rect.center(),
             egui::Align2::CENTER_CENTER,
-            "QR apparaîtra ici",
+            app.lang.t("preview.placeholder"),
             egui::FontId::proportional(14.0),
             egui::Color32::from_gray(120),
         );
@@ -64,7 +64,7 @@ pub fn show_preview(app: &mut RustyQrApp, ui: &mut Ui, ctx: &Context) {
     ui.add_space(8.0);
 
     // Quick generate button
-    if ui.button("\u{1F504} G\u{E9}n\u{E9}rer").clicked() {
+    if ui.button(format!("\u{1F504} {}", app.lang.t("preview.generate"))).clicked() {
         app.regenerate_qr();
     }
 }

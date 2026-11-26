@@ -7,17 +7,17 @@ use crate::theme;
 
 pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
     ui.add_space(8.0);
-    theme::title(ui, "\u{1F4DA} Biblioth\u{E8}que");
-    theme::hint(ui, "Vos configurations QR enregistrées — cliquez pour recharger et modifier.");
+    theme::title(ui, &format!("\u{1F4DA} {}", app.lang.t("library.title")));
+    theme::hint(ui, &app.lang.t("library.hint"));
     ui.separator();
     ui.add_space(8.0);
 
     if app.library.is_empty() {
         ui.vertical_centered(|ui| {
             ui.add_space(40.0);
-            ui.label(egui::RichText::new("Aucune entrée enregistrée.").weak());
+            ui.label(egui::RichText::new(app.lang.t("library.empty")).weak());
             ui.add_space(8.0);
-            theme::hint(ui, "Depuis l'onglet \u{AB} Cr\u{E9}er QR \u{BB}, utilisez\n\u{AB} \u{1F4BE} Enregistrer dans la biblioth\u{E8}que \u{BB}.");
+            theme::hint(ui, &app.lang.t("library.empty_hint"));
         });
         return;
     }
@@ -41,11 +41,11 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
                         // Left: info
                         ui.vertical(|ui| {
                             ui.label(egui::RichText::new(&entry.name).strong());
-                            let mut meta = format!("{} \u{B7} {}", entry.form.content_type.label(), entry.date);
+                            let mut meta = format!("{} \u{B7} {}", app.lang.t(entry.form.content_type.label_key()), entry.date);
                             if let Some(ref bid) = entry.template.builtin_id {
                                 meta.push_str(&format!("  \u{2022}  \u{1F5FA} {bid}"));
                             } else if entry.template.custom_svg.is_some() {
-                                meta.push_str("  \u{2022}  \u{1F5FA} personnalis\u{E9}");
+                                meta.push_str(&format!("  \u{2022}  \u{1F5FA} {}", app.lang.t("library.custom_theme")));
                             }
                             ui.label(egui::RichText::new(meta).small().weak());
                             // Preview of encoded string
@@ -72,11 +72,11 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
                                 egui::Button::new(
                                     egui::RichText::new("\u{1F5D1}").color(egui::Color32::from_rgb(200, 80, 80))
                                 ).frame(false)
-                            ).on_hover_text("Supprimer").clicked() {
+                            ).on_hover_text(app.lang.t("library.delete")).clicked() {
                                 to_delete = Some(entry.id);
                             }
                             // Load
-                            let load_label = if is_loaded { "\u{2713} Charg\u{E9}" } else { "\u{2191} Charger" };
+                            let load_label = if is_loaded { app.lang.t("library.loaded") } else { app.lang.t("library.load") };
                             let load_color = if is_loaded {
                                 egui::Color32::from_rgb(80, 200, 80)
                             } else {
@@ -84,7 +84,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
                             };
                             if ui.add(
                                 egui::Button::new(egui::RichText::new(load_label).color(load_color))
-                            ).on_hover_text("Charger dans l'\u{E9}diteur").clicked() {
+                            ).on_hover_text(app.lang.t("library.load_hint")).clicked() {
                                 to_load = Some(i);
                             }
                         });
@@ -136,7 +136,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
                     app.custom_template_svg.clone()
                 };
                 if let Some(svg) = svg_opt {
-                    let labels = app.card.layout.field_labels();
+                    let labels = app.card.layout.field_label_keys();
                     let mut detected = crate::template::detect_fields(&svg, labels);
                     for df in &mut detected {
                         if let Some(sf) = tpl.fields.iter().find(|f| f.var == df.var) {
