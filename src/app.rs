@@ -552,7 +552,8 @@ impl eframe::App for RustyQrApp {
             let repo_url      = self.lang.t("app.repo_url");
             let app_author    = self.lang.t("app.author");
             let app_license   = self.lang.t("app.license");
-            let app_version   = self.lang.t("app.version");
+            // Single source of truth for the version: Cargo.toml.
+            let app_version   = format!("v{}", env!("CARGO_PKG_VERSION"));
             let btn_close     = self.lang.t("about.close_button");
             egui::Window::new(about_title)
                 .collapsible(false)

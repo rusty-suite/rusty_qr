@@ -5,7 +5,6 @@
 [app]
 lang_name   = "English (EN)"
 title       = "RustyQR — QR Code Generator"
-version     = "v1.0.0"
 author      = "rusty-suite"
 license     = "PolyForm-Noncommercial"
 description = "Multi-format QR code generator\nwith style profiles and vector export."

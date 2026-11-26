@@ -3,7 +3,6 @@
 [app]
 lang_name   = "Français (CH)"
 title       = "RustyQR — Générateur de codes QR"
-version     = "v1.0.0"
 author      = "rusty-suite"
 license     = "PolyForm-Noncommercial"
 description = "Générateur de codes QR multi-formats\navec profils de style et export vectoriel."
