@@ -752,10 +752,7 @@ impl eframe::App for RustyQrApp {
                         ui.label(egui::RichText::new(&lp_folder).weak().small());
                         ui.label(egui::RichText::new(&lang_dir_path).small().monospace());
                         if ui.small_button(&lp_open).clicked() {
-                            #[cfg(target_os = "windows")]
-                            let _ = std::process::Command::new("explorer")
-                                .arg(&work_dir.join("lang"))
-                                .spawn();
+                            open_folder(&work_dir.join("lang"));
                         }
                     });
 
@@ -916,6 +913,17 @@ fn setup_fonts(ctx: &egui::Context) {
     if loaded {
         ctx.set_fonts(fonts);
     }
+}
+
+/// Opens a folder in the system file manager (Windows, macOS, Linux).
+fn open_folder(path: &std::path::Path) {
+    #[cfg(target_os = "windows")]
+    let program = "explorer";
+    #[cfg(target_os = "macos")]
+    let program = "open";
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    let program = "xdg-open";
+    let _ = std::process::Command::new(program).arg(path).spawn();
 }
 
 fn trigger_remote_lang_fetch(app: &mut RustyQrApp) {
