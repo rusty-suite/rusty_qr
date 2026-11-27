@@ -8,6 +8,13 @@ et le projet respecte le [Versionnage sémantique](https://semver.org/lang/fr/) 
 
 ## [Non publié]
 
+### Modifié
+- README en anglais (`README.md`), version française dans `README.fr.md`.
+- Licence PolyForm Noncommercial 1.0.0 déclarée dans `Cargo.toml`.
+
+### Corrigé
+- Le README citait un bouton « Charger un fichier SVG » au lieu de « 📁 Fichier SVG ».
+
 ## [0.2.0] - 2026-11-26
 
 ### Ajouté
