@@ -1,26 +1,27 @@
 # RustyQR
 
-Générateur de codes QR multi-formats avec profils de style, bibliothèque et export vectoriel.
+🇬🇧 **English** · 🇫🇷 [Français](README.fr.md)
 
-## Fonctionnalités
+Multi-format QR code generator with style profiles, a library and vector export.
 
-- **11 types de QR** : URL, Texte, Wi-Fi, SMS, Téléphone, Email, vCard, MeCard, Géolocalisation, GS1, 2D-Doc
-- **Micro QR M1–M4** implémenté nativement (sans dépendance externe)
-- **Profils de style** : couleurs personnalisées, logo superposé avec positionnement libre
-- **Bibliothèque** : sauvegarde et rechargement de configurations nommées
-- **Concepteur de cartes** : 4 gabarits (Carte de visite, Étiquette, Badge, Flyer A6)
-- **Thèmes SVG** : 4 thèmes intégrés + chargement de fichiers locaux + catalogue GitHub
-- **Exports** : PNG, JPEG, SVG, PDF, EPS, DOCX
+## Features
+
+- **11 QR types**: URL, Text, Wi-Fi, SMS, Phone, Email, vCard, MeCard, Geolocation, GS1, 2D-Doc
+- **Micro QR M1–M4** implemented natively (no external dependency)
+- **Style profiles**: custom colours, overlaid logo with free positioning
+- **Library**: save and reload named configurations
+- **Card designer**: 4 layouts (Business card, QR label, Badge, A6 flyer)
+- **SVG themes**: 4 built-in themes + local files + GitHub catalogue
+- **Exports**: PNG, JPEG, SVG, PDF, EPS, DOCX
 
 ---
 
-## Guide — Créer un thème SVG personnalisé
+## Guide — Creating a custom SVG theme
 
-Les thèmes SVG permettent de personnaliser l'apparence des cartes exportées depuis le
-**Concepteur de cartes**. Un thème est un fichier `.svg` contenant des marqueurs
-`{{VARIABLE}}` que RustyQR remplace à l'export.
+SVG themes customise the look of the cards exported from the **Card designer**.
+A theme is an `.svg` file containing `{{VARIABLE}}` markers that RustyQR replaces on export.
 
-### Structure minimale d'un thème
+### Minimal theme structure
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -28,64 +29,64 @@ Les thèmes SVG permettent de personnaliser l'apparence des cartes exportées de
      xmlns:xlink="http://www.w3.org/1999/xlink"
      width="{{W}}" height="{{H}}" viewBox="0 0 {{W}} {{H}}">
 
-  <!-- Votre fond personnalisé -->
+  <!-- Your custom background -->
   <rect width="{{W}}" height="{{H}}" fill="{{BG}}" rx="8"/>
 
-  <!-- Code QR (bloc généré automatiquement) -->
+  <!-- QR code (block generated automatically) -->
   {{QR_IMAGE}}
 
-  <!-- Éléments d'accent selon le gabarit (barre, bandeau…) -->
+  <!-- Accent elements depending on the layout (bar, banner…) -->
   {{ACCENT_BLOCK}}
 
-  <!-- Champs texte selon le gabarit -->
+  <!-- Text fields depending on the layout -->
   {{TEXT_BLOCK}}
 
 </svg>
 ```
 
-### Variables disponibles
+### Available variables
 
-#### Dimensions et couleurs
+#### Dimensions and colours
 
-| Variable | Contenu | Exemple |
+| Variable | Content | Example |
 |----------|---------|---------|
-| `{{W}}` | Largeur du canvas en pixels | `321` |
-| `{{H}}` | Hauteur du canvas en pixels | `204` |
-| `{{BG}}` | Couleur de fond (#RRGGBB) | `#FFFFFF` |
-| `{{FG}}` | Couleur de texte (#RRGGBB) | `#1E1E1E` |
-| `{{AC}}` | Couleur d'accent (#RRGGBB) | `#3264C8` |
+| `{{W}}` | Canvas width in pixels | `321` |
+| `{{H}}` | Canvas height in pixels | `204` |
+| `{{BG}}` | Background colour (#RRGGBB) | `#FFFFFF` |
+| `{{FG}}` | Text colour (#RRGGBB) | `#1E1E1E` |
+| `{{AC}}` | Accent colour (#RRGGBB) | `#3264C8` |
 
-#### Position du code QR
+#### QR code position
 
-| Variable | Contenu |
+| Variable | Content |
 |----------|---------|
-| `{{QR_X}}` | Position X du QR en pixels |
-| `{{QR_Y}}` | Position Y du QR en pixels |
-| `{{QR_SZ}}` | Taille (largeur = hauteur) du QR en pixels |
+| `{{QR_X}}` | X position of the QR code in pixels |
+| `{{QR_Y}}` | Y position of the QR code in pixels |
+| `{{QR_SZ}}` | Size (width = height) of the QR code in pixels |
 
-#### Blocs pré-générés (approche recommandée)
+#### Pre-generated blocks (recommended approach)
 
-| Variable | Contenu |
+| Variable | Content |
 |----------|---------|
-| `{{QR_IMAGE}}` | Élément `<image>` SVG complet avec le QR encodé en base64 |
-| `{{ACCENT_BLOCK}}` | Décoration d'accent selon le gabarit (barre verticale pour Carte de visite, bandeau pour Badge, vide pour les autres) |
-| `{{TEXT_BLOCK}}` | Ensemble des éléments `<text>` positionnés selon le gabarit |
+| `{{QR_IMAGE}}` | Complete SVG `<image>` element with the QR code encoded in base64 |
+| `{{ACCENT_BLOCK}}` | Accent decoration depending on the layout (vertical bar for Business card, banner for Badge, empty for the others) |
+| `{{TEXT_BLOCK}}` | All `<text>` elements positioned according to the layout |
 
-#### Contenu des champs texte (approche avancée)
+#### Text field contents (advanced approach)
 
-Si vous souhaitez positionner le texte vous-même, utilisez :
+To position the text yourself, use:
 
-| Variable | Contenu |
+| Variable | Content |
 |----------|---------|
-| `{{F0}}` | Premier champ (Nom, Titre…) |
-| `{{F1}}` | Deuxième champ |
-| `{{F2}}` | Troisième champ |
-| `{{F3}}` | Quatrième champ |
-| `{{F4}}` | Cinquième champ |
+| `{{F0}}` | First field (Name, Title…) |
+| `{{F1}}` | Second field |
+| `{{F2}}` | Third field |
+| `{{F3}}` | Fourth field |
+| `{{F4}}` | Fifth field |
 
-> Les valeurs sont échappées pour XML (`&amp;`, `&lt;`, etc.).
+> Values are XML-escaped (`&amp;`, `&lt;`, etc.).
 
-### Exemple avancé — fond dégradé avec halo
+### Advanced example — gradient background with glow
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -120,26 +121,25 @@ Si vous souhaitez positionner le texte vous-même, utilisez :
 </svg>
 ```
 
-### Tester votre thème localement
+### Testing your theme locally
 
-1. Créez votre fichier `mon_theme.svg` avec les variables ci-dessus.
-2. Dans RustyQR → **Concepteur de cartes**, cliquez sur **📁 Charger un fichier SVG**.
-3. Sélectionnez votre fichier — il devient immédiatement actif pour l'export SVG.
+1. Create your `my_theme.svg` file using the variables above.
+2. In RustyQR → **Card designer**, click **📁 SVG file**.
+3. Select your file — it becomes active immediately for SVG export.
 
+### Layouts and canvas dimensions
 
-### Gabarits et dimensions de canvas
-
-| Gabarit | Dimensions physiques | Pixels (96 dpi) |
-|---------|---------------------|-----------------|
-| Carte de visite | 85 × 54 mm | ~321 × 204 px |
-| Étiquette QR | 60 × 60 mm | ~227 × 227 px |
+| Layout | Physical size | Pixels (96 dpi) |
+|--------|---------------|-----------------|
+| Business card | 85 × 54 mm | ~321 × 204 px |
+| QR label | 60 × 60 mm | ~227 × 227 px |
 | Badge | 90 × 60 mm | ~340 × 227 px |
 | Flyer (A6) | 148 × 105 mm | ~560 × 397 px |
 
-Votre thème SVG s'adapte automatiquement grâce aux variables `{{W}}` et `{{H}}`.
+Your SVG theme adapts automatically thanks to the `{{W}}` and `{{H}}` variables.
 
 ---
 
-## Licence
+## License
 
 PolyForm Noncommercial — © rusty-suite
