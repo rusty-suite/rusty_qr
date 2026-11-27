@@ -6,7 +6,6 @@
 lang_name   = "English (EN)"
 title       = "RustyQR — QR Code Generator"
 author      = "rusty-suite"
-license     = "PolyForm-Noncommercial"
 description = "Multi-format QR code generator\nwith style profiles and vector export."
 repo_display = "github.com/rusty-suite/rusty_qr"
 repo_url    = "https://github.com/rusty-suite/rusty_qr"

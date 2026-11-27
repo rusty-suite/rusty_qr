@@ -551,7 +551,8 @@ impl eframe::App for RustyQrApp {
             let repo_display  = self.lang.t("app.repo_display");
             let repo_url      = self.lang.t("app.repo_url");
             let app_author    = self.lang.t("app.author");
-            let app_license   = self.lang.t("app.license");
+            // Licence lue depuis Cargo.toml (identifiant SPDX), comme la version.
+            let app_license   = env!("CARGO_PKG_LICENSE").to_string();
             // Single source of truth for the version: Cargo.toml.
             let app_version   = format!("v{}", env!("CARGO_PKG_VERSION"));
             let btn_close     = self.lang.t("about.close_button");
