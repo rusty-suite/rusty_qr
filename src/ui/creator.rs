@@ -16,7 +16,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
     // ── Type + EC level ──────────────────────────────────────────────────────
     egui::Grid::new("type_row").num_columns(2).spacing([8.0, 4.0]).show(ui, |ui| {
         ui.label(app.lang.t("creator.type"));
-        egui::ComboBox::from_id_source("qr_type")
+        egui::ComboBox::from_id_salt("qr_type")
             .selected_text(app.lang.t(app.form.content_type.label_key()))
             .show_ui(ui, |ui| {
                 for &t in QrContentType::ALL {
@@ -28,7 +28,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
         ui.end_row();
 
         ui.label(app.lang.t("creator.ec"));
-        egui::ComboBox::from_id_source("ec_level")
+        egui::ComboBox::from_id_salt("ec_level")
             .selected_text(app.form.ec_level.label())
             .show_ui(ui, |ui| {
                 for ec in [EcLevel::L, EcLevel::M, EcLevel::Q, EcLevel::H] {
@@ -160,7 +160,7 @@ fn show_form(app: &mut RustyQrApp, ui: &mut Ui) -> bool {
                 lf(ui, &app.lang.t("creator.ssid"),          &mut app.form.wifi_ssid,     &mut changed);
                 lf(ui, &app.lang.t("creator.password"),  &mut app.form.wifi_password, &mut changed);
                 ui.label(app.lang.t("creator.security"));
-                egui::ComboBox::from_id_source("wifi_sec")
+                egui::ComboBox::from_id_salt("wifi_sec")
                     .selected_text(app.lang.t(app.form.wifi_security.label_key()))
                     .show_ui(ui, |ui| {
                         for s in [WifiSecurity::Wpa, WifiSecurity::Wep, WifiSecurity::None] {

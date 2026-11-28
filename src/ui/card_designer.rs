@@ -39,7 +39,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
         ui.label(egui::RichText::new(app.lang.t("card.layout")).strong());
         ui.add_space(4.0);
 
-        egui::ComboBox::from_id_source("card_layout")
+        egui::ComboBox::from_id_salt("card_layout")
             .selected_text(app.lang.t(card.layout.label_key()))
             .show_ui(ui, |ui| {
                 for &lay in CardLayout::ALL {
@@ -262,7 +262,7 @@ fn show_template_selector(app: &mut RustyQrApp, ui: &mut Ui) -> bool {
             .unwrap_or_else(|| "—".into())
     };
 
-    egui::ComboBox::from_id_source("tmpl_select")
+    egui::ComboBox::from_id_salt("tmpl_select")
         .selected_text(&cur_label)
         .width(220.0)
         .show_ui(ui, |ui| {
@@ -372,10 +372,10 @@ fn show_template_selector(app: &mut RustyQrApp, ui: &mut Ui) -> bool {
             theme::hint(ui, &format!("\u{23F3} {msg}"));
         } else if *ok {
             ui.label(egui::RichText::new(msg).small()
-                .color(egui::Color32::from_rgb(80, 200, 120)));
+                .color(rusty_ui::tokens::SUCCESS));
         } else {
             ui.label(egui::RichText::new(msg).small()
-                .color(egui::Color32::from_rgb(220, 100, 60)));
+                .color(rusty_ui::tokens::DANGER_TEXT));
         }
     }
 
@@ -478,7 +478,7 @@ fn show_egui_preview(app: &RustyQrApp, ui: &mut Ui) {
     let fg_col = egui::Color32::from_rgb(app.card.text_color[0], app.card.text_color[1], app.card.text_color[2]);
 
     painter.rect_filled(rect, 4.0, bg);
-    painter.rect_stroke(rect, 4.0, egui::Stroke::new(1.0, egui::Color32::from_gray(80)));
+    painter.rect_stroke(rect, 4.0, egui::Stroke::new(1.0, rusty_ui::tokens::BORDER_STRONG), egui::StrokeKind::Inside);
 
     let qr_sz = match app.card.layout {
         CardLayout::BusinessCard => dh * 0.82,
@@ -507,9 +507,9 @@ fn show_egui_preview(app: &RustyQrApp, ui: &mut Ui) {
             egui::Rect::from_min_max(egui::pos2(0.0,0.0), egui::pos2(1.0,1.0)),
             egui::Color32::WHITE);
     } else {
-        painter.rect_filled(qr_rect, 2.0, egui::Color32::from_gray(180));
+        painter.rect_filled(qr_rect, 2.0, rusty_ui::tokens::TEXT_SECONDARY);
         painter.text(qr_rect.center(), egui::Align2::CENTER_CENTER,
-            "QR", egui::FontId::proportional(12.0), egui::Color32::from_gray(100));
+            "QR", egui::FontId::proportional(12.0), rusty_ui::tokens::TEXT_MUTED);
     }
 
     match app.card.layout {

@@ -21,7 +21,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
         .show(ui, |ui| {
             // Format
             ui.label(app.lang.t("export_page.format"));
-            egui::ComboBox::from_id_source("export_fmt")
+            egui::ComboBox::from_id_salt("export_fmt")
                 .selected_text(app.export_format.label())
                 .show_ui(ui, |ui| {
                     for &fmt in ExportFormat::ALL {
@@ -33,7 +33,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
             // Profil
             ui.label(app.lang.t("export_page.profile"));
             let names: Vec<String> = app.profiles.iter().map(|p| p.name.clone()).collect();
-            egui::ComboBox::from_id_source("export_profile")
+            egui::ComboBox::from_id_salt("export_profile")
                 .selected_text(names.get(app.selected_profile).cloned().unwrap_or_default())
                 .show_ui(ui, |ui| {
                     for (i, name) in names.iter().enumerate() {
