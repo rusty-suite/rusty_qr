@@ -8,6 +8,24 @@ et le projet respecte le [Versionnage sémantique](https://semver.org/lang/fr/) 
 
 ## [Non publié]
 
+### Ajouté
+- Nouvelle interface conforme à la charte Rusty Suite : menu latéral réductible avec
+  icônes, barre d'outils (profil actif), barre d'état (réseau, langues, mise à jour),
+  notifications, logo animé, navigation clavier (Alt+1 à Alt+5, F6, F1).
+- Mise à jour automatique avec contrôle SHA-256 et retour à la version précédente si la
+  nouvelle ne démarre pas.
+- Instance unique et journal de l'application avec rotation.
+
+### Modifié
+- Thème sombre unique de la charte (le choix clair / système est retiré).
+- Programme portable : données dans `rusty_qr-data` à côté de l'exécutable ; un ancien
+  dossier contenant une bibliothèque ou des profils reste utilisé.
+- Langue choisie depuis la fenêtre Langue commune (l'ancien choix est repris).
+- Textes : emoji décoratifs retirés des menus et des titres, tirets cadratins remplacés.
+
+### Supprimé
+- Anciennes fenêtres Langue et À propos, et leurs textes.
+
 ## [0.3.0] - 2026-11-28
 
 ### Modifié
