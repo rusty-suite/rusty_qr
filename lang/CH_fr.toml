@@ -177,6 +177,7 @@ default_green = "Vert tech"
 default_name = "Défaut"
 
 [card]
+not_downloaded = "pas encore téléchargé"
 title = "Concepteur de cartes"
 hint = "Mettez en page votre code QR sur une carte, étiquette ou flyer - puis exportez."
 svg_theme = "Thème SVG"

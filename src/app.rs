@@ -215,12 +215,12 @@ impl eframe::App for RustyQrApp {
                         if let Some(profile) = self.profiles.get_mut(self.selected_profile) {
                             profile.logo_path = p.clone();
                         }
-                        self.logo_dl_status = Some((true, format!("\u{2713} {}", self.lang.tf("status.image_loaded", &[("path", &p)]))));
+                        self.logo_dl_status = Some((true, format!("{}", self.lang.tf("status.image_loaded", &[("path", &p)]))));
                         self.profiles_dirty = true;
                         self.mark_qr_dirty();
                     }
                     Err(e) => {
-                        self.logo_dl_status = Some((false, format!("\u{2717} {e}")));
+                        self.logo_dl_status = Some((false, format!("{e}")));
                     }
                 }
             }
@@ -247,9 +247,9 @@ impl eframe::App for RustyQrApp {
                         let n = extras.len();
                         self.remote_templates = extras;
                         if n == 0 {
-                            (true, format!("\u{1F7E2} {}", self.lang.t("status.themes_online_none")))
+                            (true, format!("{}", self.lang.t("status.themes_online_none")))
                         } else {
-                            (true, format!("\u{1F7E2} {}", self.lang.tf("status.themes_online_n", &[("n", &n.to_string())])))
+                            (true, format!("{}", self.lang.tf("status.themes_online_n", &[("n", &n.to_string())])))
                         }
                     }
                     Err(e) => {
@@ -259,9 +259,9 @@ impl eframe::App for RustyQrApp {
                             || e.to_lowercase().contains("network")
                             || e.to_lowercase().contains("refused");
                         let msg = if offline {
-                            format!("\u{1F534} {}", self.lang.t("status.themes_offline"))
+                            format!("{}", self.lang.t("status.themes_offline"))
                         } else {
-                            format!("\u{26A0} {}", self.lang.tf("status.github_error", &[("error", &e)]))
+                            format!("{}", self.lang.tf("status.github_error", &[("error", &e)]))
                         };
                         (false, msg)
                     }
@@ -305,9 +305,9 @@ impl eframe::App for RustyQrApp {
                             }
                         }
                         self.template_preview_dirty = true;
-                        (true, format!("\u{2B07} {} \u{2713}", self.lang.t("status.theme_downloaded")))
+                        (true, format!("{}", self.lang.t("status.theme_downloaded")))
                     }
-                    Err(e) => (false, format!("\u{2717} {}", self.lang.tf("status.download_error", &[("error", &e)]))),
+                    Err(e) => (false, format!("{}", self.lang.tf("status.download_error", &[("error", &e)]))),
                 });
                 self.remote_svg_dl = None;
             }

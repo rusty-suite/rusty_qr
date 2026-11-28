@@ -177,6 +177,7 @@ default_green = "Verde tech"
 default_name = "Predefinito"
 
 [card]
+not_downloaded = "non ancora scaricato"
 title = "Designer di biglietti"
 hint = "Impagina il tuo codice QR su un biglietto, un'etichetta o un volantino - poi esporta."
 svg_theme = "Tema SVG"

@@ -54,7 +54,7 @@ pub enum EcLevel { L, M, Q, H }
 
 impl EcLevel {
     pub fn label(&self) -> &'static str {
-        match self { Self::L => "L — 7%", Self::M => "M — 15%", Self::Q => "Q — 25%", Self::H => "H — 30%" }
+        match self { Self::L => "L - 7%", Self::M => "M - 15%", Self::Q => "Q - 25%", Self::H => "H - 30%" }
     }
     pub fn to_qrcode(&self) -> qrcode::EcLevel {
         match self {
@@ -251,17 +251,17 @@ impl QrForm {
             &s[..end]
         }
         match self.content_type {
-            QrContentType::Url    => format!("URL \u{2014} {}", trunc(&self.url, 50)),
-            QrContentType::Text   => format!("{} \u{2014} {}", lang.t("qr_short.text"), trunc(&self.text, 40)),
-            QrContentType::Wifi   => format!("WiFi \u{2014} {}", self.wifi_ssid), // mot de passe exclu
-            QrContentType::Sms    => format!("SMS \u{2014} {} \u{2014} {}", self.sms_number, trunc(&self.sms_message, 20)),
-            QrContentType::Tel    => format!("{} \u{2014} {}", lang.t("qr_short.tel"), self.tel_number),
-            QrContentType::Email  => format!("Email \u{2014} {}", self.email_to),
-            QrContentType::Vcard  => format!("vCard \u{2014} {}", self.vcard_name),
-            QrContentType::Mecard => format!("MECARD \u{2014} {}", self.mecard_name),
-            QrContentType::Geo    => format!("{} \u{2014} {}, {}", lang.t("qr_short.geo"), self.geo_lat, self.geo_lon),
-            QrContentType::Gs1    => format!("GS1 \u{2014} {}", trunc(&self.gs1_data, 30)),
-            QrContentType::TwoDoc => format!("2D-Doc \u{2014} {}", self.twod_cert_id),
+            QrContentType::Url    => format!("URL - {}", trunc(&self.url, 50)),
+            QrContentType::Text   => format!("{} - {}", lang.t("qr_short.text"), trunc(&self.text, 40)),
+            QrContentType::Wifi   => format!("WiFi - {}", self.wifi_ssid), // mot de passe exclu
+            QrContentType::Sms    => format!("SMS - {} - {}", self.sms_number, trunc(&self.sms_message, 20)),
+            QrContentType::Tel    => format!("{} - {}", lang.t("qr_short.tel"), self.tel_number),
+            QrContentType::Email  => format!("Email - {}", self.email_to),
+            QrContentType::Vcard  => format!("vCard - {}", self.vcard_name),
+            QrContentType::Mecard => format!("MECARD - {}", self.mecard_name),
+            QrContentType::Geo    => format!("{} - {}, {}", lang.t("qr_short.geo"), self.geo_lat, self.geo_lon),
+            QrContentType::Gs1    => format!("GS1 - {}", trunc(&self.gs1_data, 30)),
+            QrContentType::TwoDoc => format!("2D-Doc - {}", self.twod_cert_id),
         }
     }
 }

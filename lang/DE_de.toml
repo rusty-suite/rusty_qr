@@ -177,6 +177,7 @@ default_green = "Tech-Grün"
 default_name = "Standard"
 
 [card]
+not_downloaded = "noch nicht heruntergeladen"
 title = "Karten-Designer"
 hint = "Platzieren Sie Ihren QR-Code auf einer Karte, Etikette oder einem Flyer - und exportieren Sie."
 svg_theme = "SVG-Design"

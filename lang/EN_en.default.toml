@@ -179,6 +179,7 @@ default_green = "Tech green"
 default_name = "Default"
 
 [card]
+not_downloaded = "not downloaded yet"
 title = "Card designer"
 hint = "Lay out your QR code on a card, label or flyer - then export."
 svg_theme = "SVG theme"

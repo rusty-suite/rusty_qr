@@ -11,7 +11,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
     ui.add_space(8.0);
 
     if app.qr_matrix.is_none() {
-        theme::status_warn(ui, &format!("\u{26A0} {}", app.lang.t("export_page.generate_first")));
+        theme::status_warn(ui, &format!("{}", app.lang.t("export_page.generate_first")));
         return;
     }
 
@@ -73,8 +73,8 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
             let profile = app.current_profile().clone();
             let result = export::export(matrix, &profile, app.form.ec_level, app.export_format, &app.export_path);
             app.export_status = Some(match result {
-                Ok(_) => (true, format!("\u{2713} {}", app.lang.tf("status.exported", &[("path", &app.export_path)]))),
-                Err(e) => (false, format!("\u{2717} {}", app.lang.tf("status.export_error", &[("error", &e.to_string())]))),
+                Ok(_) => (true, format!("{}", app.lang.tf("status.exported", &[("path", &app.export_path)]))),
+                Err(e) => (false, format!("{}", app.lang.tf("status.export_error", &[("error", &e.to_string())]))),
             });
         }
     }
