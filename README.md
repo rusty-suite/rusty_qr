@@ -16,7 +16,7 @@ Multi-format QR code generator with style profiles, a library and vector export.
 
 ---
 
-## Guide — Creating a custom SVG theme
+## Guide: Creating a custom SVG theme
 
 SVG themes customise the look of the cards exported from the **Card designer**.
 A theme is an `.svg` file containing `{{VARIABLE}}` markers that RustyQR replaces on export.
@@ -86,7 +86,7 @@ To position the text yourself, use:
 
 > Values are XML-escaped (`&amp;`, `&lt;`, etc.).
 
-### Advanced example — gradient background with glow
+### Advanced example: gradient background with glow
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -125,7 +125,7 @@ To position the text yourself, use:
 
 1. Create your `my_theme.svg` file using the variables above.
 2. In RustyQR → **Card designer**, click **📁 SVG file**.
-3. Select your file — it becomes active immediately for SVG export.
+3. Select your file: it becomes active immediately for SVG export.
 
 ### Layouts and canvas dimensions
 

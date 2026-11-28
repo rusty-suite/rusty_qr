@@ -16,7 +16,7 @@ Générateur de codes QR multi-formats avec profils de style, bibliothèque et e
 
 ---
 
-## Guide — Créer un thème SVG personnalisé
+## Guide : Créer un thème SVG personnalisé
 
 Les thèmes SVG permettent de personnaliser l'apparence des cartes exportées depuis le
 **Concepteur de cartes**. Un thème est un fichier `.svg` contenant des marqueurs
@@ -87,7 +87,7 @@ Si vous souhaitez positionner le texte vous-même, utilisez :
 
 > Les valeurs sont échappées pour XML (`&amp;`, `&lt;`, etc.).
 
-### Exemple avancé — fond dégradé avec halo
+### Exemple avancé : fond dégradé avec halo
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -126,7 +126,7 @@ Si vous souhaitez positionner le texte vous-même, utilisez :
 
 1. Créez votre fichier `mon_theme.svg` avec les variables ci-dessus.
 2. Dans RustyQR → **Concepteur de cartes**, cliquez sur **📁 Fichier SVG**.
-3. Sélectionnez votre fichier — il devient immédiatement actif pour l'export SVG.
+3. Sélectionnez votre fichier : il devient immédiatement actif pour l'export SVG.
 
 
 ### Gabarits et dimensions de canvas
