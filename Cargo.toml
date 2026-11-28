@@ -12,8 +12,8 @@ path = "src/main.rs"
 eframe = "0.31"
 egui = "0.31"
 # Charte Rusty Suite : thème, composants, logo, langues, mise à jour (version épinglée)
-rusty_ui = { git = "https://github.com/rusty-suite/rusty_kit", tag = "v0.2.0" }
-rusty_core = { git = "https://github.com/rusty-suite/rusty_kit", tag = "v0.2.0" }
+rusty_ui = { git = "https://github.com/rusty-suite/rusty_kit", tag = "v0.3.1" }
+rusty_core = { git = "https://github.com/rusty-suite/rusty_kit", tag = "v0.3.1" }
 log = "0.4"
 qrcode = "0.14"
 image = { version = "0.24", default-features = false, features = ["png", "jpeg"] }

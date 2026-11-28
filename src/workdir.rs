@@ -24,10 +24,22 @@ fn legacy_dirs() -> Vec<PathBuf> {
     dirs
 }
 
-/// Dossier de travail, déterminé une fois au démarrage.
+/// Dossier portable déjà présent à côté de l'exécutable : il l'emporte toujours sur
+/// l'ancien dossier (choix explicite de l'utilisateur).
+fn existing_portable_dir() -> Option<PathBuf> {
+    let exe = std::env::current_exe().ok()?;
+    let dir = exe.parent()?.join(format!("{APP_ID}-data"));
+    dir.is_dir().then_some(dir)
+}
+
+/// Dossier de travail, déterminé une fois au démarrage : dossier portable existant,
+/// sinon ancien dossier s'il contient des données, sinon nouveau dossier portable.
 pub fn work_dir() -> PathBuf {
     static DIR: OnceLock<PathBuf> = OnceLock::new();
     DIR.get_or_init(|| {
+        if let Some(dir) = existing_portable_dir() {
+            return dir;
+        }
         legacy_dirs()
             .into_iter()
             .find(|d| d.join("library.json").is_file() || d.join("profiles.json").is_file())
