@@ -28,14 +28,14 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
     for (i, entry) in app.library.iter().enumerate() {
             let is_loaded = app.loaded_library_id == Some(entry.id);
 
-            egui::Frame::none()
+            egui::Frame::new()
                 .fill(if is_loaded {
-                    egui::Color32::from_rgb(30, 60, 30)
+                    rusty_ui::tokens::SUCCESS_BG
                 } else {
-                    egui::Color32::from_gray(28)
+                    rusty_ui::tokens::BG_PANEL
                 })
-                .rounding(4.0)
-                .inner_margin(egui::Margin::symmetric(10.0, 6.0))
+                .corner_radius(rusty_ui::theme::radius(rusty_ui::tokens::RADIUS_MD))
+                .inner_margin(egui::Margin::symmetric(10, 6))
                 .show(ui, |ui| {
                     ui.horizontal(|ui| {
                         // Left: info
@@ -70,7 +70,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
                             // Delete
                             if ui.add(
                                 egui::Button::new(
-                                    egui::RichText::new("\u{1F5D1}").color(egui::Color32::from_rgb(200, 80, 80))
+                                    egui::RichText::new("\u{1F5D1}").color(rusty_ui::tokens::DANGER)
                                 ).frame(false)
                             ).on_hover_text(app.lang.t("library.delete")).clicked() {
                                 to_delete = Some(entry.id);
@@ -78,9 +78,9 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
                             // Load
                             let load_label = if is_loaded { app.lang.t("library.loaded") } else { app.lang.t("library.load") };
                             let load_color = if is_loaded {
-                                egui::Color32::from_rgb(80, 200, 80)
+                                rusty_ui::tokens::SUCCESS
                             } else {
-                                egui::Color32::from_rgb(100, 160, 240)
+                                rusty_ui::tokens::ACCENT_TEAL_TEXT
                             };
                             if ui.add(
                                 egui::Button::new(egui::RichText::new(load_label).color(load_color))

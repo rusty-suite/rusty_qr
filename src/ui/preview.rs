@@ -51,13 +51,13 @@ pub fn show_preview(app: &mut RustyQrApp, ui: &mut Ui, ctx: &Context) {
             egui::vec2(display_size, display_size),
             egui::Sense::hover(),
         ).0;
-        ui.painter().rect_filled(rect, 0.0, egui::Color32::from_gray(30));
+        ui.painter().rect_filled(rect, 0.0, rusty_ui::tokens::BG_INPUT);
         ui.painter().text(
             rect.center(),
             egui::Align2::CENTER_CENTER,
             app.lang.t("preview.placeholder"),
             egui::FontId::proportional(14.0),
-            egui::Color32::from_gray(120),
+            rusty_ui::tokens::TEXT_MUTED,
         );
     }
 

@@ -1,14 +1,16 @@
+//! Couleurs et styles de texte de Rusty QR, reliés aux tokens de la charte Rusty Suite.
+
 use egui::Color32;
 
-pub const GREEN:      Color32 = Color32::from_rgb(80,  210, 80);
-pub const YELLOW:     Color32 = Color32::from_rgb(220, 160, 60);
-pub const RED:        Color32 = Color32::from_rgb(220, 80,  80);
+pub const GREEN:      Color32 = rusty_ui::tokens::SUCCESS;
+pub const YELLOW:     Color32 = rusty_ui::tokens::WARNING;
+pub const RED:        Color32 = rusty_ui::tokens::DANGER_TEXT;
 #[allow(dead_code)]
-pub const GREEN2:     Color32 = Color32::from_rgb(80,  200, 80);
+pub const GREEN2:     Color32 = rusty_ui::tokens::SUCCESS;
 #[allow(dead_code)]
-pub const RED_BTN:    Color32 = Color32::from_rgb(220, 70,  70);
+pub const RED_BTN:    Color32 = rusty_ui::tokens::DANGER;
 #[allow(dead_code)]
-pub const GRAY:       Color32 = Color32::from_rgb(140, 140, 140);
+pub const GRAY:       Color32 = rusty_ui::tokens::TEXT_MUTED;
 #[allow(dead_code)]
 pub const BODY_SIZE:  f32 = 14.0;
 pub const TITLE_SIZE: f32 = 18.0;

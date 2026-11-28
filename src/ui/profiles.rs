@@ -38,7 +38,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
                     if count > 1 {
                         if ui.add(
                             egui::Button::new(
-                                egui::RichText::new("\u{1F5D1}").color(egui::Color32::from_rgb(200, 80, 80))
+                                egui::RichText::new("\u{1F5D1}").color(rusty_ui::tokens::DANGER)
                             ).frame(false)
                         ).on_hover_text(app.lang.t("profiles.delete")).clicked() {
                             to_delete = Some(i);
@@ -68,10 +68,10 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
             if let Some(p) = app.profiles.get(idx) {
                 let name = p.name.clone();
                 ui.add_space(4.0);
-                egui::Frame::none()
+                egui::Frame::new()
                     .fill(egui::Color32::from_rgb(60, 20, 20))
-                    .rounding(4.0)
-                    .inner_margin(egui::Margin::symmetric(8.0, 4.0))
+                    .corner_radius(rusty_ui::theme::radius(rusty_ui::tokens::RADIUS_MD))
+                    .inner_margin(egui::Margin::symmetric(8, 4))
                     .show(ui, |ui| {
                         ui.label(egui::RichText::new(app.lang.tf("profiles.delete_confirm", &[("name", &name)])).color(egui::Color32::from_rgb(240, 120, 120)));
                         ui.horizontal(|ui| {
@@ -369,10 +369,10 @@ fn profile_editor(
                 ("\u{2713}", lang.tf("profiles.readable", &[
                     ("ec",  ec.label()),
                     ("max", &format!("{:.0}", max_ec * 100.0)),
-                ]), egui::Color32::from_rgb(80, 200, 80))
+                ]), rusty_ui::tokens::SUCCESS)
             } else {
                 ("\u{26A0}", lang.tf("profiles.too_big", &[("ec", ec.label())]),
-                 egui::Color32::from_rgb(220, 100, 60))
+                 rusty_ui::tokens::DANGER_TEXT)
             };
             ui.label(
                 egui::RichText::new(format!("{icon} {text}"))
