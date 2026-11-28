@@ -45,26 +45,26 @@ pub fn show_preview(app: &mut RustyQrApp, ui: &mut Ui, ctx: &Context) {
         let size = egui::vec2(display_size, display_size);
         ui.add(egui::Image::new(tex).fit_to_exact_size(size));
     } else if let Some(err) = &app.qr_error {
-        theme::status_err(ui, &format!("\u{2717} {}", err.message(&app.lang)));
+        theme::status_err(ui, &format!("{}", err.message(&app.lang)));
     } else {
         let rect = ui.allocate_exact_size(
             egui::vec2(display_size, display_size),
             egui::Sense::hover(),
         ).0;
-        ui.painter().rect_filled(rect, 0.0, egui::Color32::from_gray(30));
+        ui.painter().rect_filled(rect, 0.0, rusty_ui::tokens::BG_INPUT);
         ui.painter().text(
             rect.center(),
             egui::Align2::CENTER_CENTER,
             app.lang.t("preview.placeholder"),
             egui::FontId::proportional(14.0),
-            egui::Color32::from_gray(120),
+            rusty_ui::tokens::TEXT_MUTED,
         );
     }
 
     ui.add_space(8.0);
 
     // Quick generate button
-    if ui.button(format!("\u{1F504} {}", app.lang.t("preview.generate"))).clicked() {
+    if ui.button(format!("{}", app.lang.t("preview.generate"))).clicked() {
         app.regenerate_qr();
     }
 }

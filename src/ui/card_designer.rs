@@ -12,7 +12,7 @@ const fn remote_base()   -> usize { template::BUILTIN.len() + 2 }
 
 pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
     ui.add_space(8.0);
-    theme::title(ui, &format!("\u{1F5FA} {}", app.lang.t("card.title")));
+    theme::title(ui, &format!("{}", app.lang.t("card.title")));
     theme::hint(ui, &app.lang.t("card.hint"));
     ui.separator();
     ui.add_space(8.0);
@@ -39,7 +39,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
         ui.label(egui::RichText::new(app.lang.t("card.layout")).strong());
         ui.add_space(4.0);
 
-        egui::ComboBox::from_id_source("card_layout")
+        egui::ComboBox::from_id_salt("card_layout")
             .selected_text(app.lang.t(card.layout.label_key()))
             .show_ui(ui, |ui| {
                 for &lay in CardLayout::ALL {
@@ -105,8 +105,8 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
             for i in 0..field_count {
                 ui.horizontal(|ui| {
                     let vis  = &mut app.template_field_data[i].visible;
-                    let icon = if *vis { "\u{1F441}" } else { "\u{1F648}" };
-                    if ui.small_button(icon)
+                    let icon = if *vis { rusty_ui::icons::EYE } else { rusty_ui::icons::EYE_CLOSED };
+                    if ui.small_button(rusty_ui::icons::rich(icon, 14.0))
                         .on_hover_text(if *vis { app.lang.t("card.hide_field") } else { app.lang.t("card.show_field") })
                         .clicked()
                     {
@@ -181,12 +181,12 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
         ui.add_space(4.0);
 
         if app.qr_matrix.is_none() {
-            theme::status_warn(ui, &format!("\u{26A0} {}", app.lang.t("card.generate_first")));
+            theme::status_warn(ui, &format!("{}", app.lang.t("card.generate_first")));
         }
 
         let exporting = app.card_export_rx.is_some();
         if exporting {
-            theme::hint(ui, &format!("\u{23F3} {}", app.lang.t("status.exporting")));
+            theme::hint(ui, &format!("{}", app.lang.t("status.exporting")));
         } else {
             ui.horizontal(|ui| {
                 if ui.button("SVG").on_hover_text(app.lang.t("card.svg_hint")).clicked() {
@@ -259,10 +259,10 @@ fn show_template_selector(app: &mut RustyQrApp, ui: &mut Ui) -> bool {
         let ri = app.selected_template_idx - rb;
         app.remote_templates.get(ri)
             .map(|t| app.lang.tf("card.theme_github", &[("name", &t.name)]))
-            .unwrap_or_else(|| "—".into())
+            .unwrap_or_else(|| "-".into())
     };
 
-    egui::ComboBox::from_id_source("tmpl_select")
+    egui::ComboBox::from_id_salt("tmpl_select")
         .selected_text(&cur_label)
         .width(220.0)
         .show_ui(ui, |ui| {
@@ -277,7 +277,7 @@ fn show_template_selector(app: &mut RustyQrApp, ui: &mut Ui) -> bool {
             for i in 0..n {
                 let t   = &template::BUILTIN[i];
                 let idx = i + 1;
-                let lbl = format!("{} — {}", builtin_name(app, t), app.lang.t(&format!("template.{}.desc", t.id)));
+                let lbl = format!("{} - {}", builtin_name(app, t), app.lang.t(&format!("template.{}.desc", t.id)));
                 if ui.selectable_label(app.selected_template_idx == idx, lbl).clicked() {
                     apply_template(app, idx);
                     changed = true;
@@ -303,9 +303,9 @@ fn show_template_selector(app: &mut RustyQrApp, ui: &mut Ui) -> bool {
                     let desc = app.remote_templates[i].description.clone();
                     let ready = app.remote_templates[i].svg.is_some();
                     let lbl = if ready {
-                        format!("{name} — {desc}")
+                        format!("{name} - {desc}")
                     } else {
-                        format!("{name} — {desc} ⬇")
+                        format!("{name} - {desc} ({})", app.lang.t("card.not_downloaded"))
                     };
                     if ui.selectable_label(app.selected_template_idx == idx, lbl).clicked() {
                         apply_template(app, idx);
@@ -345,7 +345,7 @@ fn show_template_selector(app: &mut RustyQrApp, ui: &mut Ui) -> bool {
                         changed = true;
                     }
                     Err(e) => {
-                        app.card_export_status = Some((false, format!("\u{2717} {}", app.lang.tf("status.read_error", &[("error", &e.to_string())]))));
+                        app.card_export_status = Some((false, format!("{}", app.lang.tf("status.read_error", &[("error", &e.to_string())]))));
                     }
                 }
             }
@@ -353,8 +353,8 @@ fn show_template_selector(app: &mut RustyQrApp, ui: &mut Ui) -> bool {
 
         // Manual refresh button
         let fetching = app.remote_fetch_rx.is_some();
-        let btn_label = if fetching { "\u{23F3}" } else { "\u{1F504}" };
-        if ui.add_enabled(!fetching, egui::Button::new(btn_label))
+        let btn_label = rusty_ui::icons::REFRESH; // désactivé pendant la vérification;
+        if ui.add_enabled(!fetching, egui::Button::new(rusty_ui::icons::rich(btn_label, 16.0)))
             .on_hover_text(app.lang.t("card.recheck_themes"))
             .clicked()
         {
@@ -369,13 +369,13 @@ fn show_template_selector(app: &mut RustyQrApp, ui: &mut Ui) -> bool {
         ui.add_space(2.0);
         let fetching = app.remote_fetch_rx.is_some();
         if fetching {
-            theme::hint(ui, &format!("\u{23F3} {msg}"));
+            theme::hint(ui, &format!("{msg}"));
         } else if *ok {
             ui.label(egui::RichText::new(msg).small()
-                .color(egui::Color32::from_rgb(80, 200, 120)));
+                .color(rusty_ui::tokens::SUCCESS));
         } else {
             ui.label(egui::RichText::new(msg).small()
-                .color(egui::Color32::from_rgb(220, 100, 60)));
+                .color(rusty_ui::tokens::DANGER_TEXT));
         }
     }
 
@@ -478,7 +478,7 @@ fn show_egui_preview(app: &RustyQrApp, ui: &mut Ui) {
     let fg_col = egui::Color32::from_rgb(app.card.text_color[0], app.card.text_color[1], app.card.text_color[2]);
 
     painter.rect_filled(rect, 4.0, bg);
-    painter.rect_stroke(rect, 4.0, egui::Stroke::new(1.0, egui::Color32::from_gray(80)));
+    painter.rect_stroke(rect, 4.0, egui::Stroke::new(1.0, rusty_ui::tokens::BORDER_STRONG), egui::StrokeKind::Inside);
 
     let qr_sz = match app.card.layout {
         CardLayout::BusinessCard => dh * 0.82,
@@ -507,9 +507,9 @@ fn show_egui_preview(app: &RustyQrApp, ui: &mut Ui) {
             egui::Rect::from_min_max(egui::pos2(0.0,0.0), egui::pos2(1.0,1.0)),
             egui::Color32::WHITE);
     } else {
-        painter.rect_filled(qr_rect, 2.0, egui::Color32::from_gray(180));
+        painter.rect_filled(qr_rect, 2.0, rusty_ui::tokens::TEXT_SECONDARY);
         painter.text(qr_rect.center(), egui::Align2::CENTER_CENTER,
-            "QR", egui::FontId::proportional(12.0), egui::Color32::from_gray(100));
+            "QR", egui::FontId::proportional(12.0), rusty_ui::tokens::TEXT_MUTED);
     }
 
     match app.card.layout {
@@ -653,8 +653,8 @@ fn export_card(app: &mut RustyQrApp, fmt: CardExportFmt) {
         // ── SVG: plain write, no rasterization needed ─────────────────────
         CardExportFmt::Svg => {
             app.card_export_status = Some(match std::fs::write(&path_str, &svg) {
-                Ok(_)  => (true,  format!("\u{2713} {}", app.lang.tf("status.exported", &[("path", &path_str)]))),
-                Err(e) => (false, format!("\u{2717} {e}")),
+                Ok(_)  => (true,  format!("{}", app.lang.tf("status.exported", &[("path", &path_str)]))),
+                Err(e) => (false, format!("{e}")),
             });
         }
 
@@ -663,7 +663,7 @@ fn export_card(app: &mut RustyQrApp, fmt: CardExportFmt) {
             let (orig_w, orig_h) = app.card.layout.canvas_px();
             let (tx, rx) = std::sync::mpsc::channel();
             app.card_export_rx    = Some(rx);
-            app.card_export_status = Some((true, format!("\u{23F3} {}", app.lang.t("status.exporting"))));
+            app.card_export_status = Some((true, format!("{}", app.lang.t("status.exporting"))));
 
             std::thread::spawn(move || {
                 const DPI_SCALE: f32 = 300.0 / 96.0; // 300 DPI output
@@ -706,8 +706,8 @@ fn export_card(app: &mut RustyQrApp, fmt: CardExportFmt) {
                 };
 
                 let msg = match result {
-                    Ok(_)  => Ok(format!("\u{2713} {}", exported_msg)),
-                    Err(e) => Err(format!("\u{2717} {e}")),
+                    Ok(_)  => Ok(format!("{}", exported_msg)),
+                    Err(e) => Err(format!("{e}")),
                 };
                 let _ = tx.send(msg);
             });

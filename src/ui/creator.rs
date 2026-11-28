@@ -7,7 +7,7 @@ use crate::theme;
 
 pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
     ui.add_space(8.0);
-    theme::title(ui, &format!("\u{1F4C4} {}", app.lang.t("creator.title")));
+    theme::title(ui, &format!("{}", app.lang.t("creator.title")));
     ui.separator();
     ui.add_space(8.0);
 
@@ -16,7 +16,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
     // ── Type + EC level ──────────────────────────────────────────────────────
     egui::Grid::new("type_row").num_columns(2).spacing([8.0, 4.0]).show(ui, |ui| {
         ui.label(app.lang.t("creator.type"));
-        egui::ComboBox::from_id_source("qr_type")
+        egui::ComboBox::from_id_salt("qr_type")
             .selected_text(app.lang.t(app.form.content_type.label_key()))
             .show_ui(ui, |ui| {
                 for &t in QrContentType::ALL {
@@ -28,7 +28,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
         ui.end_row();
 
         ui.label(app.lang.t("creator.ec"));
-        egui::ComboBox::from_id_source("ec_level")
+        egui::ComboBox::from_id_salt("ec_level")
             .selected_text(app.form.ec_level.label())
             .show_ui(ui, |ui| {
                 for ec in [EcLevel::L, EcLevel::M, EcLevel::Q, EcLevel::H] {
@@ -77,9 +77,9 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
 
         // Bouton "Enregistrer dans la bibliothèque"
         let save_label = if app.loaded_library_id.is_some() {
-            format!("\u{1F4BE} {}", app.lang.t("creator.resave"))
+            format!("{}", app.lang.t("creator.resave"))
         } else {
-            format!("\u{1F4BE} {}", app.lang.t("creator.save_to_library"))
+            format!("{}", app.lang.t("creator.save_to_library"))
         };
         if ui.button(save_label).clicked() {
             app.show_save_dialog = true;
@@ -92,7 +92,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
 
     // ── Dialogue de sauvegarde ───────────────────────────────────────────────
     if app.show_save_dialog {
-        egui::Window::new(format!("\u{1F4BE} {}", app.lang.t("creator.save_to_library")))
+        egui::Window::new(format!("{}", app.lang.t("creator.save_to_library")))
             .collapsible(false)
             .resizable(false)
             .auto_sized()
@@ -116,7 +116,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
                     let name = app.save_name_input.trim().to_string();
                     let can_save = !name.is_empty();
 
-                    if ui.add_enabled(can_save, egui::Button::new(format!("\u{2713} {}", app.lang.t("creator.save")))).clicked()
+                    if ui.add_enabled(can_save, egui::Button::new(format!("{}", app.lang.t("creator.save")))).clicked()
                         || (ui.input(|i| i.key_pressed(egui::Key::Enter)) && can_save)
                     {
                         let tpl_state = build_template_state(app);
@@ -125,7 +125,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
                         app.save_name_input.clear();
                     }
 
-                    if ui.button(format!("\u{2715} {}", app.lang.t("creator.cancel"))).clicked() {
+                    if ui.button(format!("{}", app.lang.t("creator.cancel"))).clicked() {
                         app.show_save_dialog = false;
                     }
                 });
@@ -136,7 +136,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
     // Indicateur "chargé depuis la bibliothèque"
     if app.loaded_library_id.is_some() {
         ui.add_space(4.0);
-        theme::hint(ui, &format!("\u{270F} {}", app.lang.t("creator.loaded_hint")));
+        theme::hint(ui, &format!("{}", app.lang.t("creator.loaded_hint")));
     }
 }
 
@@ -160,7 +160,7 @@ fn show_form(app: &mut RustyQrApp, ui: &mut Ui) -> bool {
                 lf(ui, &app.lang.t("creator.ssid"),          &mut app.form.wifi_ssid,     &mut changed);
                 lf(ui, &app.lang.t("creator.password"),  &mut app.form.wifi_password, &mut changed);
                 ui.label(app.lang.t("creator.security"));
-                egui::ComboBox::from_id_source("wifi_sec")
+                egui::ComboBox::from_id_salt("wifi_sec")
                     .selected_text(app.lang.t(app.form.wifi_security.label_key()))
                     .show_ui(ui, |ui| {
                         for s in [WifiSecurity::Wpa, WifiSecurity::Wep, WifiSecurity::None] {
@@ -242,7 +242,7 @@ fn show_form(app: &mut RustyQrApp, ui: &mut Ui) -> bool {
                 lf(ui, &app.lang.t("creator.cert_id"), &mut app.form.twod_cert_id, &mut changed);
                 lf(ui, &app.lang.t("creator.c40_data"), &mut app.form.twod_c40,    &mut changed);
             });
-            theme::status_warn(ui, &format!("\u{26A0} {}", app.lang.t("creator.twodoc_warning")));
+            theme::status_warn(ui, &format!("{}", app.lang.t("creator.twodoc_warning")));
         }
     }
 

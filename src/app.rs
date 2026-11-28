@@ -3,64 +3,13 @@ use egui::TextureHandle;
 use crate::card::CardConfig;
 use crate::export::ExportFormat;
 use crate::history::{LibraryEntry, load_library};
-use crate::lang::{Lang, RemoteLangInfo};
+use crate::lang::Lang;
 use crate::qr::types::QrForm;
 use crate::style::{profile::{StyleProfile, load_profiles, save_profiles}, renderer};
 use crate::template::{RemoteTemplate, TemplateColor, TemplateField};
 use crate::ui;
 
 // ─── App theme ───────────────────────────────────────────────────────────────
-
-#[derive(Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize, Default)]
-pub enum AppTheme {
-    #[default]
-    System,
-    Light,
-    Dark,
-}
-
-impl AppTheme {
-    fn cycle(self) -> Self {
-        match self {
-            AppTheme::System => AppTheme::Light,
-            AppTheme::Light  => AppTheme::Dark,
-            AppTheme::Dark   => AppTheme::System,
-        }
-    }
-    fn icon(self) -> &'static str {
-        match self {
-            AppTheme::System => "\u{1F4BB}", // 💻
-            AppTheme::Light  => "\u{2600}",  // ☀
-            AppTheme::Dark   => "\u{1F319}", // 🌙
-        }
-    }
-    pub fn tooltip(self, lang: &Lang) -> String {
-        match self {
-            AppTheme::System => lang.t("theme.system"),
-            AppTheme::Light  => lang.t("theme.light"),
-            AppTheme::Dark   => lang.t("theme.dark"),
-        }
-    }
-}
-
-fn theme_path() -> std::path::PathBuf {
-    crate::workdir::work_dir().join("theme.json")
-}
-
-pub fn load_theme() -> AppTheme {
-    std::fs::read_to_string(theme_path())
-        .ok()
-        .and_then(|s| serde_json::from_str(&s).ok())
-        .unwrap_or_default()
-}
-
-pub fn save_theme(theme: AppTheme) {
-    if let Ok(json) = serde_json::to_string(&theme) {
-        let _ = std::fs::write(theme_path(), json);
-    }
-}
-
-// ─── Tabs ────────────────────────────────────────────────────────────────────
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Tab {
@@ -104,7 +53,6 @@ pub struct RustyQrApp {
 
     // ── À propos ─────────────────────────────────────────────────────────────
     pub show_about: bool,
-    pub logo_texture: Option<TextureHandle>,
 
     // ── Thème SVG (concepteur de cartes) ─────────────────────────────────────
     /// 0 = aucun, 1..=BUILTIN.len() = intégré, BUILTIN.len()+1 = personnalisé, au-delà = distant
@@ -131,19 +79,24 @@ pub struct RustyQrApp {
     pub remote_fetch_rx: Option<std::sync::mpsc::Receiver<Result<Vec<RemoteTemplate>, String>>>,
     pub remote_svg_dl: Option<(usize, std::sync::mpsc::Receiver<Result<String, String>>)>,
 
-    // ── Thème de l'interface ──────────────────────────────────────────────────
-    pub app_theme: AppTheme,
-
     // ── Langue & répertoire de travail ────────────────────────────────────────
     pub lang: Lang,
     pub work_dir: std::path::PathBuf,
-    /// Message d'erreur affiché si le chargement de la langue a échoué.
-    pub lang_error: Option<String>,
-    pub show_lang_settings: bool,
-    pub remote_langs: Vec<RemoteLangInfo>,
-    pub lang_remote_fetch_status: Option<(bool, String)>,
-    pub lang_remote_fetch_rx: Option<std::sync::mpsc::Receiver<Result<Vec<RemoteLangInfo>, String>>>,
-    pub lang_download_rx: Option<std::sync::mpsc::Receiver<Result<(String, std::path::PathBuf), String>>>,
+
+    // ── Charte Rusty Suite (rusty_kit) ───────────────────────────────────────
+    pub settings: Settings,
+    pub logo: Logo,
+    pub toasts: ui_kit::Toasts,
+    pub zones: ui_kit::Zones,
+    pub show_language: bool,
+    pub show_update: bool,
+    pub online: Option<bool>,
+    pub net_rx: Option<Receiver<bool>>,
+    pub lang_rx: Option<Receiver<Result<usize, String>>>,
+    pub update: Option<Release>,
+    pub update_rx: Option<Receiver<Result<Option<Release>, String>>>,
+    pub install_rx: Option<Receiver<Result<(), String>>>,
+    pub args_rx: Receiver<Vec<String>>,
 }
 
 impl RustyQrApp {
@@ -151,10 +104,14 @@ impl RustyQrApp {
         cc: &eframe::CreationContext<'_>,
         lang: Lang,
         work_dir: std::path::PathBuf,
-        lang_error: Option<String>,
+        settings: Settings,
+        args_rx: Receiver<Vec<String>>,
+        rolled_back: Option<String>,
     ) -> Self {
-        setup_fonts(&cc.egui_ctx);
-        Self {
+        ui_kit::install(&cc.egui_ctx);
+        let mut logo = Logo::new(LogoAnim::Loading);
+        logo.play_launch(0.0);
+        let mut app = Self {
             tab: Tab::Creator,
             form: QrForm::default(),
             qr_matrix: None,
@@ -175,7 +132,6 @@ impl RustyQrApp {
             export_path: String::new(),
             export_status: None,
             show_about: false,
-            logo_texture: None,
             logo_dl_rx: None,
             logo_dl_status: None,
             qr_rendered_image: None,
@@ -190,16 +146,28 @@ impl RustyQrApp {
             remote_fetch_status: None,
             remote_fetch_rx: None,
             remote_svg_dl: None,
-            app_theme: load_theme(),
             lang,
             work_dir,
-            lang_error,
-            show_lang_settings: false,
-            remote_langs: Vec::new(),
-            lang_remote_fetch_status: None,
-            lang_remote_fetch_rx: None,
-            lang_download_rx: None,
+            settings,
+            logo,
+            toasts: ui_kit::Toasts::default(),
+            zones: ui_kit::Zones::default(),
+            show_language: false,
+            show_update: false,
+            online: None,
+            net_rx: Some(rusty_core::net::check_in_background(user_agent())),
+            lang_rx: None,
+            update: None,
+            update_rx: None,
+            install_rx: None,
+            args_rx,
+        };
+        app.apply_texts(&cc.egui_ctx);
+        if let Some(v) = rolled_back {
+            let text = app.lang.tf("kit.update_restored_text", &[("version", &v)]);
+            app.toasts.push(Tone::Warning, app.lang.t("kit.update_restored"), text);
         }
+        app
     }
 
     pub fn current_profile(&self) -> &StyleProfile {
@@ -234,12 +202,8 @@ impl RustyQrApp {
 
 impl eframe::App for RustyQrApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        // Apply theme — System = follow eframe/OS, otherwise override
-        match self.app_theme {
-            AppTheme::Dark   => ctx.set_visuals(egui::Visuals::dark()),
-            AppTheme::Light  => ctx.set_visuals(egui::Visuals::light()),
-            AppTheme::System => {} // laisser eframe suivre le thème OS
-        }
+        self.zones.begin_frame(ctx);
+        self.poll_kit(ctx);
 
         // ── Poll logo URL download ────────────────────────────────────────────
         if let Some(rx) = &self.logo_dl_rx {
@@ -251,64 +215,12 @@ impl eframe::App for RustyQrApp {
                         if let Some(profile) = self.profiles.get_mut(self.selected_profile) {
                             profile.logo_path = p.clone();
                         }
-                        self.logo_dl_status = Some((true, format!("\u{2713} {}", self.lang.tf("status.image_loaded", &[("path", &p)]))));
+                        self.logo_dl_status = Some((true, format!("{}", self.lang.tf("status.image_loaded", &[("path", &p)]))));
                         self.profiles_dirty = true;
                         self.mark_qr_dirty();
                     }
                     Err(e) => {
-                        self.logo_dl_status = Some((false, format!("\u{2717} {e}")));
-                    }
-                }
-            }
-        }
-
-        if self.lang_remote_fetch_rx.is_some() || self.lang_download_rx.is_some() {
-            ctx.request_repaint_after(std::time::Duration::from_millis(80));
-        }
-
-        if let Some(rx) = &self.lang_remote_fetch_rx {
-            if let Ok(result) = rx.try_recv() {
-                self.lang_remote_fetch_rx = None;
-                self.lang_remote_fetch_status = Some(match result {
-                    Ok(list) => {
-                        let count = list.len();
-                        self.remote_langs = list;
-                        (true, format!("\u{1F7E2} {}", self.lang.tf("lang_page.status_online", &[("count", &count.to_string())])))
-                    }
-                    Err(e) => {
-                        self.remote_langs.clear();
-                        let offline = e.to_lowercase().contains("dns")
-                            || e.to_lowercase().contains("connect")
-                            || e.to_lowercase().contains("timeout")
-                            || e.to_lowercase().contains("network")
-                            || e.to_lowercase().contains("refused");
-                        let msg = if offline {
-                            format!("\u{1F534} {}", self.lang.t("lang_page.status_offline"))
-                        } else {
-                            format!("\u{26A0} {}", self.lang.tf("lang_page.status_github_error", &[("error", &e)]))
-                        };
-                        (false, msg)
-                    }
-                });
-            }
-        }
-
-        if let Some(rx) = &self.lang_download_rx {
-            if let Ok(result) = rx.try_recv() {
-                self.lang_download_rx = None;
-                match result {
-                    Ok((stem, path)) => match crate::lang::Lang::load_file(&path) {
-                        Ok(new_lang) => {
-                            crate::lang::Lang::save_choice(&self.work_dir, &stem);
-                            self.lang = new_lang;
-                            self.lang_remote_fetch_status = Some((true, format!("\u{2B07} {}", self.lang.tf("lang_page.status_installed", &[("stem", &stem)]))));
-                        }
-                        Err(e) => {
-                            self.lang_remote_fetch_status = Some((false, format!("\u{2717} {}", self.lang.tf("lang_page.status_load_error", &[("error", &e)]))));
-                        }
-                    },
-                    Err(e) => {
-                        self.lang_remote_fetch_status = Some((false, format!("\u{2717} {}", self.lang.tf("lang_page.status_download_error", &[("error", &e)]))));
+                        self.logo_dl_status = Some((false, format!("{e}")));
                     }
                 }
             }
@@ -335,9 +247,9 @@ impl eframe::App for RustyQrApp {
                         let n = extras.len();
                         self.remote_templates = extras;
                         if n == 0 {
-                            (true, format!("\u{1F7E2} {}", self.lang.t("status.themes_online_none")))
+                            (true, format!("{}", self.lang.t("status.themes_online_none")))
                         } else {
-                            (true, format!("\u{1F7E2} {}", self.lang.tf("status.themes_online_n", &[("n", &n.to_string())])))
+                            (true, format!("{}", self.lang.tf("status.themes_online_n", &[("n", &n.to_string())])))
                         }
                     }
                     Err(e) => {
@@ -347,9 +259,9 @@ impl eframe::App for RustyQrApp {
                             || e.to_lowercase().contains("network")
                             || e.to_lowercase().contains("refused");
                         let msg = if offline {
-                            format!("\u{1F534} {}", self.lang.t("status.themes_offline"))
+                            format!("{}", self.lang.t("status.themes_offline"))
                         } else {
-                            format!("\u{26A0} {}", self.lang.tf("status.github_error", &[("error", &e)]))
+                            format!("{}", self.lang.tf("status.github_error", &[("error", &e)]))
                         };
                         (false, msg)
                     }
@@ -393,9 +305,9 @@ impl eframe::App for RustyQrApp {
                             }
                         }
                         self.template_preview_dirty = true;
-                        (true, format!("\u{2B07} {} \u{2713}", self.lang.t("status.theme_downloaded")))
+                        (true, format!("{}", self.lang.t("status.theme_downloaded")))
                     }
-                    Err(e) => (false, format!("\u{2717} {}", self.lang.tf("status.download_error", &[("error", &e)]))),
+                    Err(e) => (false, format!("{}", self.lang.tf("status.download_error", &[("error", &e)]))),
                 });
                 self.remote_svg_dl = None;
             }
@@ -466,383 +378,45 @@ impl eframe::App for RustyQrApp {
             }
         }
 
-        // ── Erreur de langue (modal au premier démarrage sans fichier) ────────
-        if self.lang_error.is_some() {
-            let err_msg = self.lang_error.clone().unwrap_or_default();
-            let ok_label = self.lang.t("errors.ok_button");
-            let mut dismiss = false;
-            egui::Window::new(format!("\u{26A0} {}", self.lang.t("errors.lang_dialog_title")))
-                .collapsible(false)
-                .resizable(false)
-                .fixed_size([360.0, 110.0])
-                .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
-                .show(ctx, |ui| {
-                    ui.add_space(8.0);
-                    ui.label(&err_msg);
-                    ui.add_space(12.0);
-                    ui.separator();
-                    ui.add_space(4.0);
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        ui.add_space(4.0);
-                        if ui.button(&ok_label).clicked() { dismiss = true; }
-                    });
-                    ui.add_space(4.0);
-                });
-            if dismiss { self.lang_error = None; }
+        // ── Châssis de la charte : barre d'état, menu latéral, barre d'outils ──
+        let languages = self.lang.tf("kit.languages_count", &[("count", &rusty_core::lang::STEMS.len().to_string())]);
+        let update_version = self.update.as_ref().map(|r| r.version.clone());
+        let mut action = ui_kit::status_bar(ctx, &ui_kit::StatusInfo { online: self.online, languages: &languages, update: update_version.as_deref(), version: VERSION });
+        let info = ui_kit::AppInfo { name: "Rusty QR".into(), description: self.lang.t("app.description"), version: VERSION.into() };
+        let labels: Vec<String> = SECTIONS.iter().map(|(_, key, _)| self.lang.t(key)).collect();
+        let items: Vec<ui_kit::SidebarItem> = SECTIONS.iter().zip(&labels).map(|((_, _, icon), label)| ui_kit::SidebarItem { icon, label }).collect();
+        let mut selected = SECTIONS.iter().position(|(t, _, _)| *t == self.tab).unwrap_or(0);
+        let collapsed_before = self.settings.common.sidebar_collapsed;
+        let a = ui_kit::sidebar(ctx, &mut self.logo, &info, &items, &mut selected, &mut self.settings.common.sidebar_collapsed);
+        if a != ui_kit::ChromeAction::None {
+            action = a;
         }
-
-        // ── Top bar ──────────────────────────────────────────────────────────
-        let theme_tooltip    = self.app_theme.tooltip(&self.lang);
-        let lang_tooltip     = self.lang.t("nav.lang_settings");
-        let active_lang_disp = {
-            let stem = &self.lang.active_stem;
-            if stem.is_empty() { "—".to_string() } else { stem.clone() }
-        };
-        egui::TopBottomPanel::top("topbar").show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.add_space(4.0);
-                ui.label(egui::RichText::new("RustyQR").strong());
-                ui.label(egui::RichText::new("v1.0.0").small().weak());
-
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    ui.add_space(4.0);
-                    if ui.add(egui::Button::new("\u{2699}").frame(false))
-                        .on_hover_text(self.lang.t("nav.about"))
-                        .clicked()
-                    {
-                        self.show_about = true;
-                    }
-                    ui.add_space(4.0);
-                    if ui.add(egui::Button::new(self.app_theme.icon()).frame(false))
-                        .on_hover_text(&theme_tooltip)
-                        .clicked()
-                    {
-                        self.app_theme = self.app_theme.cycle();
-                        save_theme(self.app_theme);
-                    }
-                    ui.add_space(4.0);
-                    if ui.add(egui::Button::new("\u{1F310}").frame(false))
-                        .on_hover_text(format!("{lang_tooltip}  [{active_lang_disp}]"))
-                        .clicked()
-                    {
-                        self.show_lang_settings = true;
-                    }
-                });
-            });
+        self.tab = SECTIONS[selected.min(SECTIONS.len() - 1)].0;
+        if self.settings.common.sidebar_collapsed != collapsed_before {
+            self.save_settings();
+        }
+        // Profil de style actif : liste dans la barre d'outils.
+        let title = labels[selected.min(labels.len() - 1)].clone();
+        let names: Vec<String> = self.profiles.iter().map(|p| p.name.clone()).collect();
+        let mut profile_idx = self.selected_profile;
+        let profile_label = self.lang.t("nav.active_profile");
+        let a = ui_kit::toolbar(ctx, &title, |ui| {
+            ui_kit::select(ui, "active_profile", &mut profile_idx, &names);
+            ui.label(ui_kit::Text::Label.rich(&profile_label).color(ui_kit::tokens::TEXT_SECONDARY));
         });
-
-        // ── Logo texture (lazy) ───────────────────────────────────────────────
-        if self.logo_texture.is_none() {
-            let rgba = crate::logo::generate_rgba(96);
-            let img  = egui::ColorImage::from_rgba_unmultiplied([96, 96], &rgba);
-            self.logo_texture = Some(ctx.load_texture("logo", img, egui::TextureOptions::LINEAR));
+        if a != ui_kit::ChromeAction::None {
+            action = a;
         }
-
-        // ── Modal "À propos" ─────────────────────────────────────────────────
-        if self.show_about {
-            let about_title   = self.lang.t("about.window_title");
-            let lbl_app       = self.lang.t("about.app_label");
-            let lbl_ver       = self.lang.t("about.version_label");
-            let lbl_author    = self.lang.t("about.author_label");
-            let lbl_license   = self.lang.t("about.license_label");
-            let lbl_desc      = self.lang.t("about.description_label");
-            let lbl_repo      = self.lang.t("about.repo_label");
-            let desc_val      = self.lang.t("app.description");
-            let repo_display  = self.lang.t("app.repo_display");
-            let repo_url      = self.lang.t("app.repo_url");
-            let app_author    = self.lang.t("app.author");
-            // Licence lue depuis Cargo.toml (identifiant SPDX), comme la version.
-            let app_license   = env!("CARGO_PKG_LICENSE").to_string();
-            // Single source of truth for the version: Cargo.toml.
-            let app_version   = format!("v{}", env!("CARGO_PKG_VERSION"));
-            let btn_close     = self.lang.t("about.close_button");
-            egui::Window::new(about_title)
-                .collapsible(false)
-                .resizable(false)
-                .fixed_size([360.0, 340.0])
-                .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
-                .show(ctx, |ui| {
-                    ui.add_space(8.0);
-                    if let Some(tex) = &self.logo_texture {
-                        ui.vertical_centered(|ui| {
-                            ui.add(egui::Image::new(tex).fit_to_exact_size(egui::vec2(96.0, 96.0)));
-                            ui.add_space(6.0);
-                            ui.label(egui::RichText::new("RustyQR").size(20.0).strong());
-                        });
-                    }
-                    ui.add_space(10.0);
-                    ui.separator();
-                    ui.add_space(8.0);
-                    egui::Grid::new("about_grid").num_columns(2).spacing([16.0, 6.0]).show(ui, |ui| {
-                        row(ui, &lbl_app,     "Rusty QR");
-                        row(ui, &lbl_ver,     &app_version);
-                        row(ui, &lbl_author,  &app_author);
-                        row(ui, &lbl_license, &app_license);
-                        row(ui, &lbl_desc,    &desc_val);
-                        ui.label(egui::RichText::new(&lbl_repo).weak());
-                        ui.add(egui::Hyperlink::from_label_and_url(&repo_display, &repo_url));
-                        ui.end_row();
-                    });
-                    ui.add_space(12.0);
-                    ui.separator();
-                    ui.add_space(6.0);
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        ui.add_space(4.0);
-                        if ui.button(&btn_close).clicked() { self.show_about = false; }
-                    });
-                    ui.add_space(4.0);
-                });
+        if profile_idx != self.selected_profile {
+            self.selected_profile = profile_idx;
+            self.mark_qr_dirty();
         }
-
-        // ── Modal "Langue" (sélection + liste) ───────────────────────────────
-        if self.show_lang_settings {
-            if self.lang_remote_fetch_rx.is_none()
-                && self.lang_remote_fetch_status.is_none()
-                && self.remote_langs.is_empty()
-            {
-                trigger_remote_lang_fetch(self);
-            }
-
-            // Prépare toutes les données AVANT la closure pour éviter les conflits d'emprunt
-            let lang_infos    = crate::lang::Lang::list_available(&self.work_dir, &self.remote_langs);
-            let lang_dir_path = self.work_dir.join("lang")
-                .to_string_lossy().into_owned();
-            let active_stem   = self.lang.active_stem.clone();
-            let work_dir      = self.work_dir.clone();
-            let remote_status = self.lang_remote_fetch_status.clone();
-            let fetching_langs = self.lang_remote_fetch_rx.is_some();
-            let downloading_lang = self.lang_download_rx.is_some();
-
-            let lp_title     = self.lang.t("lang_page.title");
-            let lp_active    = self.lang.t("lang_page.active_label");
-            let lp_available = self.lang.t("lang_page.available_label");
-            let lp_badge     = self.lang.t("lang_page.default_badge");
-            let lp_folder    = self.lang.t("lang_page.folder_label");
-            let lp_open      = self.lang.t("lang_page.open_folder_btn");
-            let lp_close     = self.lang.t("lang_page.close_button");
-            let lp_no_files  = self.lang.t("lang_page.no_files");
-            // Missing keys fall back to the bundled English strings (see `Lang::t`).
-            let lp_reload    = self.lang.t("lang_page.reload_git_btn");
-            let lp_local     = self.lang.t("lang_page.local_badge");
-            let lp_repo      = self.lang.t("lang_page.repo_badge");
-
-            // Nom d'affichage de la langue active
-            let active_display = lang_infos.iter()
-                .find(|i| i.stem == active_stem)
-                .map(|i| i.display.clone())
-                .unwrap_or_else(|| if active_stem.is_empty() { "—".into() } else { active_stem.clone() });
-
-            let mut close      = false;
-            let mut selected_local: Option<(String, std::path::PathBuf)> = None;
-            let mut selected_remote: Option<RemoteLangInfo> = None;
-            let mut reload_requested = false;
-
-            egui::Window::new(lp_title)
-                .collapsible(false)
-                .resizable(false)
-                .fixed_size([688.0, 548.0])
-                .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
-                .show(ctx, |ui| {
-                    // ── Langue active ────────────────────────────────────────
-                    ui.add_space(4.0);
-                    ui.horizontal(|ui| {
-                        ui.vertical(|ui| {
-                            ui.label(egui::RichText::new(&lp_active).weak());
-                            ui.label(egui::RichText::new(&active_display).strong());
-                        });
-                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
-                            if ui.small_button("✕").on_hover_text(&lp_close).clicked() {
-                                close = true;
-                            }
-                        });
-                    });
-                    ui.add_space(6.0);
-                    ui.add_space(6.0);
-
-                    if let Some((ok, msg)) = &remote_status {
-                        let color = if *ok {
-                            egui::Color32::from_rgb(86, 201, 110)
-                        } else {
-                            egui::Color32::from_rgb(220, 90, 90)
-                        };
-                        ui.horizontal(|ui| {
-                            ui.colored_label(color, "●");
-                            ui.colored_label(color, msg);
-                        });
-                        ui.add_space(8.0);
-                    }
-
-                    ui.separator();
-                    ui.add_space(8.0);
-
-                    // ── Liste des fichiers disponibles ───────────────────────
-                    ui.horizontal(|ui| {
-                        ui.label(egui::RichText::new(&lp_available).weak().small());
-                        if ui.small_button(&lp_reload).clicked() && !fetching_langs && !downloading_lang {
-                            reload_requested = true;
-                        }
-                    });
-                    ui.add_space(4.0);
-
-                    let list_height = 234.0;
-                    egui::ScrollArea::vertical()
-                        .max_height(list_height)
-                        .id_source("lang_list")
-                        .show(ui, |ui| {
-                            ui.set_min_width(ui.available_width());
-                            if lang_infos.is_empty() {
-                                ui.label(egui::RichText::new(&lp_no_files).weak().italics());
-                            } else {
-                                for info in &lang_infos {
-                                    let is_active = info.stem == active_stem;
-                                    let mut parts = vec![info.display.clone()];
-                                    if info.is_default {
-                                        parts.push(lp_badge.clone());
-                                    }
-                                    if info.is_local {
-                                        parts.push(lp_local.clone());
-                                    }
-                                    if info.is_remote {
-                                        parts.push(lp_repo.clone());
-                                    }
-                                    parts.push(crate::lang::Lang::stem_compact_code(&info.stem));
-                                    let label = parts.join("  ");
-                                    let width = ui.available_width();
-                                    let fill = if is_active {
-                                        egui::Color32::from_rgb(0, 105, 148)
-                                    } else {
-                                        egui::Color32::from_rgb(66, 66, 66)
-                                    };
-                                    let stroke = if is_active {
-                                        egui::Stroke::new(1.0, egui::Color32::from_rgb(0, 120, 170))
-                                    } else {
-                                        egui::Stroke::new(1.0, egui::Color32::from_rgb(72, 72, 72))
-                                    };
-                                    let text = if is_active {
-                                        egui::RichText::new(label).color(egui::Color32::WHITE)
-                                    } else {
-                                        egui::RichText::new(label).color(egui::Color32::from_gray(210))
-                                    };
-                                    let button = egui::Button::new(text)
-                                        .min_size(egui::vec2(width, 28.0))
-                                        .fill(fill)
-                                        .stroke(stroke)
-                                        .rounding(egui::Rounding::same(3.0));
-                                    let clicked = ui.add(button).clicked();
-                                    if clicked && !is_active {
-                                        if let Some(path) = &info.path {
-                                            selected_local = Some((info.stem.clone(), path.clone()));
-                                        } else if let Some(url) = &info.remote_url {
-                                            selected_remote = Some(RemoteLangInfo {
-                                                stem: info.stem.clone(),
-                                                download_url: url.clone(),
-                                            });
-                                        }
-                                    }
-                                    ui.add_space(4.0);
-                                }
-                            }
-                        });
-
-                    ui.add_space(12.0);
-                    ui.allocate_space(egui::vec2(1.0, 48.0));
-                    ui.separator();
-                    ui.add_space(10.0);
-
-                    // ── Dossier + bouton ouvrir ──────────────────────────────
-                    ui.horizontal(|ui| {
-                        ui.label(egui::RichText::new(&lp_folder).weak().small());
-                        ui.label(egui::RichText::new(&lang_dir_path).small().monospace());
-                        if ui.small_button(&lp_open).clicked() {
-                            open_folder(&work_dir.join("lang"));
-                        }
-                    });
-
-                    ui.add_space(10.0);
-                    ui.separator();
-                    ui.add_space(8.0);
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        ui.add_space(4.0);
-                        if ui.button(&lp_close).clicked() { close = true; }
-                    });
-                    ui.add_space(4.0);
-                });
-
-            // Applique la sélection (après la closure, emprunts libérés)
-            if reload_requested {
-                self.remote_langs.clear();
-                trigger_remote_lang_fetch(self);
-            }
-            if let Some((stem, path)) = selected_local {
-                if let Ok(new_lang) = crate::lang::Lang::load_file(&path) {
-                    crate::lang::Lang::save_choice(&self.work_dir, &stem);
-                    self.lang = new_lang;
-                }
-            }
-            if let Some(info) = selected_remote {
-                if self.lang_download_rx.is_none() {
-                    let work_dir = self.work_dir.clone();
-                    let stem = info.stem.clone();
-                    let (tx, rx) = std::sync::mpsc::channel();
-                    std::thread::spawn(move || {
-                        let result = crate::lang::Lang::download_to_lang_dir(&work_dir, &info)
-                            .map(|path| (stem, path));
-                        let _ = tx.send(result);
-                    });
-                    self.lang_download_rx = Some(rx);
-                    self.lang_remote_fetch_status = Some((true, self.lang.t("lang_page.status_downloading")));
-                }
-            }
-            if close { self.show_lang_settings = false; }
+        match action {
+            ui_kit::ChromeAction::Settings | ui_kit::ChromeAction::About => self.show_about = true,
+            ui_kit::ChromeAction::Language => self.show_language = true,
+            ui_kit::ChromeAction::Update => self.show_update = true,
+            ui_kit::ChromeAction::None => {}
         }
-
-        // ── Sidebar gauche ───────────────────────────────────────────────────
-        let nav_create       = self.lang.t("nav.create");
-        let nav_profiles     = self.lang.t("nav.profiles");
-        let nav_library      = self.lang.t("nav.library");
-        let nav_card         = self.lang.t("nav.card_designer");
-        let nav_export       = self.lang.t("nav.export");
-        let lbl_active_prof  = self.lang.t("nav.active_profile");
-        let count            = self.library.len();
-        let lbl_saved = if count == 1 {
-            self.lang.t("sidebar.saved_single")
-        } else {
-            self.lang.t("sidebar.saved_plural").replace("{n}", &count.to_string())
-        };
-        egui::SidePanel::left("nav").resizable(false).exact_width(190.0).show(ctx, |ui| {
-            egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
-                ui.add_space(8.0);
-                ui.separator();
-                ui.add_space(4.0);
-
-                nav_btn(ui, &mut self.tab, Tab::Creator,      &nav_create);
-                nav_btn(ui, &mut self.tab, Tab::Profiles,     &nav_profiles);
-                nav_btn(ui, &mut self.tab, Tab::Library,      &nav_library);
-                nav_btn(ui, &mut self.tab, Tab::CardDesigner, &nav_card);
-                nav_btn(ui, &mut self.tab, Tab::Export,       &nav_export);
-
-                ui.add_space(8.0);
-                ui.separator();
-                ui.add_space(4.0);
-
-                // Indicateur bibliothèque
-                if count > 0 {
-                    ui.label(egui::RichText::new(&lbl_saved).small().weak());
-                    ui.add_space(4.0);
-                }
-
-                // Profil actif
-                ui.label(egui::RichText::new(&lbl_active_prof).small().weak());
-                ui.add_space(2.0);
-                let names: Vec<String> = self.profiles.iter().map(|p| p.name.clone()).collect();
-                for (i, name) in names.iter().enumerate() {
-                    if ui.selectable_label(self.selected_profile == i, name).clicked() {
-                        self.selected_profile = i;
-                        self.mark_qr_dirty();
-                    }
-                }
-            });
-        });
 
         // ── Panneau droit : aperçu QR ────────────────────────────────────────
         egui::SidePanel::right("preview").resizable(true).default_width(300.0).show(ctx, |ui| {
@@ -852,90 +426,169 @@ impl eframe::App for RustyQrApp {
         });
 
         // ── Zone centrale ────────────────────────────────────────────────────
-        egui::CentralPanel::default().show(ctx, |ui| {
-            egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
-                match self.tab {
-                    Tab::Creator      => ui::creator::show(self, ui),
-                    Tab::Profiles     => ui::profiles::show(self, ui),
-                    Tab::Library      => ui::library::show(self, ui),
-                    Tab::CardDesigner => ui::card_designer::show(self, ui),
-                    Tab::Export       => ui::export_ui::show(self, ui),
-                }
-            });
+        ui_kit::content(ctx, false, |ui| match self.tab {
+            Tab::Creator => ui::creator::show(self, ui),
+            Tab::Profiles => ui::profiles::show(self, ui),
+            Tab::Library => ui::library::show(self, ui),
+            Tab::CardDesigner => ui::card_designer::show(self, ui),
+            Tab::Export => ui::export_ui::show(self, ui),
         });
+
+        self.kit_windows(ctx);
+        self.toasts.show(ctx);
+        self.zones.end_frame(ctx);
+    }
+
+    fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
+        update::mark_healthy(&self.work_dir);
     }
 }
 
-fn row(ui: &mut egui::Ui, label: impl AsRef<str>, value: impl AsRef<str>) {
-    ui.label(egui::RichText::new(label.as_ref()).weak());
-    ui.label(value.as_ref());
-    ui.end_row();
+// ── Charte Rusty Suite : réglages, langues, réseau, mise à jour ─────────────
+
+use rusty_core::settings::CommonSettings;
+use rusty_core::update::{self, Release};
+use rusty_ui as ui_kit;
+use rusty_ui::rusty_logo::{Logo, LogoAnim};
+use rusty_ui::Tone;
+use std::sync::mpsc::{self, Receiver};
+
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+const LICENSE: &str = env!("CARGO_PKG_LICENSE");
+const REPOSITORY: &str = "https://github.com/rusty-suite/rusty_qr";
+
+/// Agent HTTP générique (jamais d'information personnelle).
+pub fn user_agent() -> String {
+    format!("{}/{VERSION}", crate::workdir::APP_ID)
 }
 
-fn nav_btn(ui: &mut egui::Ui, current: &mut Tab, target: Tab, label: impl AsRef<str>) {
-    if ui.selectable_label(*current == target, label.as_ref()).clicked() {
-        *current = target;
+/// Réglages persistants (langue, menu réduit, mises à jour).
+#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
+pub struct Settings {
+    #[serde(default)]
+    pub common: CommonSettings,
+}
+
+/// Sections du menu latéral : onglet, clé du libellé, icône de la charte.
+const SECTIONS: [(Tab, &str, &str); 5] = [
+    (Tab::Creator, "nav.create", ui_kit::icons::LINK),
+    (Tab::Profiles, "nav.profiles", ui_kit::icons::FOLDER),
+    (Tab::Library, "nav.library", ui_kit::icons::LOG),
+    (Tab::CardDesigner, "nav.card_designer", ui_kit::icons::FILE),
+    (Tab::Export, "nav.export", ui_kit::icons::DOWNLOAD),
+];
+
+impl RustyQrApp {
+    fn apply_texts(&self, ctx: &egui::Context) {
+        let lang = self.lang.clone();
+        ui_kit::set_texts(ctx, ui_kit::KitTexts::from_lookup(|k| lang.t(k)));
     }
-}
 
-/// Charge une police système avec une couverture étendue des symboles Unicode
-/// (Dingbats, flèches, symboles divers) comme police de repli après la police
-/// par défaut d'egui. Si aucune police n'est trouvée, le comportement est inchangé.
-fn setup_fonts(ctx: &egui::Context) {
-    // Candidats par ordre de priorité (Windows, macOS, Linux)
-    let candidates: &[&str] = &[
-        "C:/Windows/Fonts/seguisym.ttf",                          // Windows — Segoe UI Symbol
-        "C:/Windows/Fonts/segoeui.ttf",                           // Windows — Segoe UI (fallback)
-        "/System/Library/Fonts/Supplemental/Symbola.ttf",         // macOS
-        "/System/Library/Fonts/Geneva.ttf",                       // macOS fallback
-        "/usr/share/fonts/truetype/unifont/unifont.ttf",          // Linux — unifont (très complet)
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",        // Linux fallback
-    ];
-
-    let mut fonts = egui::FontDefinitions::default();
-    let mut loaded = false;
-
-    for path in candidates {
-        if let Ok(data) = std::fs::read(path) {
-            fonts.font_data.insert(
-                "SymbolFallback".to_owned(),
-                egui::FontData::from_owned(data),
-            );
-            // Ajout en fin de liste = utilisé uniquement si le glyphe est absent
-            // des polices précédentes (Ubuntu-Light, Hack).
-            fonts.families
-                .entry(egui::FontFamily::Proportional)
-                .or_default()
-                .push("SymbolFallback".to_owned());
-            loaded = true;
-            break;
+    fn save_settings(&self) {
+        if let Err(e) = rusty_core::settings::save(&self.work_dir, &self.settings) {
+            log::warn!("Réglages non enregistrés : {e}");
         }
     }
 
-    if loaded {
-        ctx.set_fonts(fonts);
+    fn reload_language(&mut self, ctx: &egui::Context) {
+        self.lang = crate::lang::load(&self.work_dir, &self.settings.common.language);
+        self.apply_texts(ctx);
+        self.profiles_dirty = true;
+        self.preview_dirty = true;
     }
-}
 
-/// Opens a folder in the system file manager (Windows, macOS, Linux).
-fn open_folder(path: &std::path::Path) {
-    #[cfg(target_os = "windows")]
-    let program = "explorer";
-    #[cfg(target_os = "macos")]
-    let program = "open";
-    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
-    let program = "xdg-open";
-    let _ = std::process::Command::new(program).arg(path).spawn();
-}
-
-fn trigger_remote_lang_fetch(app: &mut RustyQrApp) {
-    if app.lang_remote_fetch_rx.is_some() {
-        return;
+    /// Réseau, langues distantes, mise à jour, second lancement.
+    fn poll_kit(&mut self, ctx: &egui::Context) {
+        if let Some(online) = self.net_rx.as_ref().and_then(|rx| rx.try_recv().ok()) {
+            self.net_rx = None;
+            self.online = Some(online);
+            if online {
+                let (dir, ua) = (self.work_dir.clone(), user_agent());
+                let (tx, rx) = mpsc::channel();
+                std::thread::spawn(move || {
+                    let _ = tx.send(rusty_core::lang::refresh_remote(crate::workdir::APP_ID, crate::lang::PACKS, &dir, &ua));
+                });
+                self.lang_rx = Some(rx);
+                if self.settings.common.check_updates {
+                    let (tx, rx) = mpsc::channel();
+                    std::thread::spawn(move || {
+                        let id = crate::workdir::APP_ID;
+                        let _ = tx.send(update::check(id, id, VERSION, &user_agent()).map_err(|e| e.to_string()));
+                    });
+                    self.update_rx = Some(rx);
+                }
+            }
+        }
+        if let Some(Ok(n)) = self.lang_rx.as_ref().and_then(|rx| rx.try_recv().ok()) {
+            self.lang_rx = None;
+            if n > 0 {
+                self.reload_language(ctx);
+            }
+        }
+        if let Some(result) = self.update_rx.as_ref().and_then(|rx| rx.try_recv().ok()) {
+            self.update_rx = None;
+            match result {
+                Ok(release) => self.update = release,
+                Err(e) => log::warn!("Vérification des mises à jour impossible : {e}"),
+            }
+        }
+        if let Some(result) = self.install_rx.as_ref().and_then(|rx| rx.try_recv().ok()) {
+            self.install_rx = None;
+            match result {
+                Ok(()) => {
+                    if let Ok(exe) = std::env::current_exe() {
+                        let _ = std::process::Command::new(exe).spawn();
+                    }
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                }
+                Err(e) => {
+                    self.show_update = false;
+                    self.toasts.push(Tone::Error, self.lang.t("kit.update_failed"), e);
+                }
+            }
+        }
+        // Second lancement : ramène la fenêtre existante au premier plan.
+        if self.args_rx.try_iter().count() > 0 {
+            ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
+        }
+        if self.net_rx.is_some() || self.lang_rx.is_some() || self.update_rx.is_some() || self.install_rx.is_some() {
+            ctx.request_repaint_after(std::time::Duration::from_millis(250));
+        }
     }
-    let (tx, rx) = std::sync::mpsc::channel();
-    std::thread::spawn(move || {
-        let _ = tx.send(crate::lang::Lang::fetch_remote_index());
-    });
-    app.lang_remote_fetch_rx = Some(rx);
-    app.lang_remote_fetch_status = Some((true, app.lang.t("lang_page.status_checking")));
+
+    /// Fenêtres communes : langue, à propos, mise à jour.
+    fn kit_windows(&mut self, ctx: &egui::Context) {
+        let lang = self.lang.clone();
+        let tr = |k: &str| lang.t(k);
+        let langs: Vec<(String, String)> = rusty_core::lang::STEMS.iter().map(|s| (s.to_string(), rusty_core::lang::language_name(crate::lang::PACKS, s))).collect();
+        let folder = self.work_dir.join("lang").display().to_string();
+        if let Some(stem) = ui_kit::language_window(ctx, &mut self.show_language, &tr, &lang.stem, &langs, &folder) {
+            self.settings.common.language = stem;
+            self.save_settings();
+            self.reload_language(ctx);
+        }
+        let info = ui_kit::AppInfo { name: "Rusty QR".into(), description: lang.t("app.description"), version: VERSION.into() };
+        ui_kit::about_window(ctx, &mut self.show_about, &tr, &info, LICENSE, REPOSITORY, &lang.t("app.author"));
+        if let Some(v) = self.update.as_ref().map(|r| r.version.clone()) {
+            let installing = self.install_rx.is_some();
+            if ui_kit::update_window(ctx, &mut self.show_update, &tr, &v, installing) == ui_kit::UpdateChoice::Install && !installing {
+                self.start_install();
+            }
+        }
+    }
+
+    fn start_install(&mut self) {
+        let Some(release) = self.update.clone() else { return };
+        let (dir, ua) = (self.work_dir.clone(), user_agent());
+        let checksum_text = self.lang.t("kit.update_checksum");
+        let (tx, rx) = mpsc::channel();
+        std::thread::spawn(move || {
+            let r = update::install(&release, VERSION, &dir, &ua).map_err(|e| match e {
+                update::UpdateError::Checksum => checksum_text,
+                other => other.to_string(),
+            });
+            let _ = tx.send(r);
+        });
+        self.install_rx = Some(rx);
+    }
 }

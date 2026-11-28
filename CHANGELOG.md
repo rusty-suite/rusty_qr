@@ -8,6 +8,30 @@ et le projet respecte le [Versionnage sémantique](https://semver.org/lang/fr/) 
 
 ## [Non publié]
 
+## [0.4.0] - 2026-11-28
+
+### Ajouté
+- Nouvelle interface conforme à la charte Rusty Suite : menu latéral réductible avec
+  icônes, barre d'outils (profil actif), barre d'état (réseau, langues, mise à jour),
+  notifications, logo animé, navigation clavier (Alt+1 à Alt+5, F6, F1).
+- Mise à jour automatique avec contrôle SHA-256 et retour à la version précédente si la
+  nouvelle ne démarre pas.
+- Instance unique et journal de l'application avec rotation.
+
+### Modifié
+- Thème sombre unique de la charte (le choix clair / système est retiré).
+- Programme portable : données dans `rusty_qr-data` à côté de l'exécutable ; un ancien
+  dossier contenant une bibliothèque ou des profils reste utilisé.
+- Langue choisie depuis la fenêtre Langue commune (l'ancien choix est repris).
+- Textes et boutons : emoji décoratifs retirés des menus, titres et messages, tirets
+  cadratins remplacés ; les boutons à icône utilisent la police d'icônes de la charte.
+- Un dossier `rusty_qr-data` déjà présent à côté de l'exécutable l'emporte sur l'ancien
+  dossier.
+- Fenêtre centrée de 1180 x 560 pt (écran 1080p à 150 %).
+
+### Supprimé
+- Anciennes fenêtres Langue et À propos, et leurs textes.
+
 ## [0.3.0] - 2026-11-28
 
 ### Modifié
@@ -48,7 +72,8 @@ et le projet respecte le [Versionnage sémantique](https://semver.org/lang/fr/) 
 
 Première pré-release publique (tag historique `Win_&_Linux`).
 
-[Non publié]: https://github.com/rusty-suite/rusty_qr/compare/v0.3.0...HEAD
+[Non publié]: https://github.com/rusty-suite/rusty_qr/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/rusty-suite/rusty_qr/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/rusty-suite/rusty_qr/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/rusty-suite/rusty_qr/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/rusty-suite/rusty_qr/compare/Win_%26_Linux...v0.2.0

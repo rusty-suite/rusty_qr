@@ -6,7 +6,7 @@ use crate::theme;
 
 pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
     ui.add_space(8.0);
-    theme::title(ui, &format!("\u{1F3A8} {}", app.lang.t("profiles.title")));
+    theme::title(ui, &format!("{}", app.lang.t("profiles.title")));
     theme::hint(ui, &app.lang.t("profiles.hint"));
     ui.separator();
     ui.add_space(8.0);
@@ -38,7 +38,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
                     if count > 1 {
                         if ui.add(
                             egui::Button::new(
-                                egui::RichText::new("\u{1F5D1}").color(egui::Color32::from_rgb(200, 80, 80))
+                                rusty_ui::icons::rich(rusty_ui::icons::TRASH, 16.0).color(rusty_ui::tokens::DANGER)
                             ).frame(false)
                         ).on_hover_text(app.lang.t("profiles.delete")).clicked() {
                             to_delete = Some(i);
@@ -68,14 +68,14 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
             if let Some(p) = app.profiles.get(idx) {
                 let name = p.name.clone();
                 ui.add_space(4.0);
-                egui::Frame::none()
+                egui::Frame::new()
                     .fill(egui::Color32::from_rgb(60, 20, 20))
-                    .rounding(4.0)
-                    .inner_margin(egui::Margin::symmetric(8.0, 4.0))
+                    .corner_radius(rusty_ui::theme::radius(rusty_ui::tokens::RADIUS_MD))
+                    .inner_margin(egui::Margin::symmetric(8, 4))
                     .show(ui, |ui| {
                         ui.label(egui::RichText::new(app.lang.tf("profiles.delete_confirm", &[("name", &name)])).color(egui::Color32::from_rgb(240, 120, 120)));
                         ui.horizontal(|ui| {
-                            if ui.button(format!("\u{2713} {}", app.lang.t("profiles.confirm"))).clicked() {
+                            if ui.button(format!("{}", app.lang.t("profiles.confirm"))).clicked() {
                                 app.profiles.remove(idx);
                                 if app.selected_profile >= app.profiles.len() {
                                     app.selected_profile = app.profiles.len().saturating_sub(1);
@@ -84,7 +84,7 @@ pub fn show(app: &mut RustyQrApp, ui: &mut Ui) {
                                 app.mark_qr_dirty();
                                 app.confirm_delete_profile = None;
                             }
-                            if ui.button(format!("\u{2715} {}", app.lang.t("profiles.cancel"))).clicked() {
+                            if ui.button(format!("{}", app.lang.t("profiles.cancel"))).clicked() {
                                 app.confirm_delete_profile = None;
                             }
                         });
@@ -185,7 +185,7 @@ fn profile_editor(
                     if path_resp.changed() { *save_dirty = true; profile.logo_url.clear(); }
 
                     // Bouton dossier
-                    if ui.button("\u{1F4C1}").on_hover_text(lang.t("profiles.choose_image")).clicked() {
+                    if ui.button(rusty_ui::icons::rich(rusty_ui::icons::FOLDER, 16.0)).on_hover_text(lang.t("profiles.choose_image")).clicked() {
                         if let Some(p) = rfd::FileDialog::new()
                             .add_filter(lang.t("export_format.image_filter"), &["png","jpg","jpeg","webp","bmp","gif"])
                             .pick_file()
@@ -196,7 +196,7 @@ fn profile_editor(
                         }
                     }
                     if !profile.logo_path.is_empty() {
-                        if ui.add(egui::Button::new("\u{2715}").frame(false))
+                        if ui.add(egui::Button::new(rusty_ui::icons::rich(rusty_ui::icons::CLOSE, 14.0)).frame(false))
                             .on_hover_text(lang.t("profiles.remove_logo"))
                             .clicked()
                         {
@@ -224,7 +224,7 @@ fn profile_editor(
                     let btn = ui.add_enabled(
                         !downloading && !profile.logo_url.is_empty(),
                         egui::Button::new(
-                            if downloading { "\u{23F3}" } else { "\u{1F4E5}" }
+                            rusty_ui::icons::rich(rusty_ui::icons::DOWNLOAD, 16.0)
                         ),
                     ).on_hover_text(lang.t("profiles.download_logo"));
 
@@ -366,19 +366,18 @@ fn profile_editor(
             let ratio  = profile.logo_ratio;
             let max_ec = renderer::max_logo_ratio(ec);
             let (icon, text, color) = if ratio <= max_ec {
-                ("\u{2713}", lang.tf("profiles.readable", &[
+                (rusty_ui::icons::CHECK, lang.tf("profiles.readable", &[
                     ("ec",  ec.label()),
                     ("max", &format!("{:.0}", max_ec * 100.0)),
-                ]), egui::Color32::from_rgb(80, 200, 80))
+                ]), rusty_ui::tokens::SUCCESS)
             } else {
-                ("\u{26A0}", lang.tf("profiles.too_big", &[("ec", ec.label())]),
-                 egui::Color32::from_rgb(220, 100, 60))
+                (rusty_ui::icons::WARNING, lang.tf("profiles.too_big", &[("ec", ec.label())]),
+                 rusty_ui::tokens::DANGER_TEXT)
             };
-            ui.label(
-                egui::RichText::new(format!("{icon} {text}"))
-                    .small()
-                    .color(color),
-            );
+            ui.horizontal(|ui| {
+                ui.label(rusty_ui::icons::rich(icon, 12.0).color(color));
+                ui.label(egui::RichText::new(text).small().color(color));
+            });
         }
 
     }
