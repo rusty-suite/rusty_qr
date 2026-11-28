@@ -23,7 +23,11 @@ et le projet respecte le [Versionnage sémantique](https://semver.org/lang/fr/) 
 - Programme portable : données dans `rusty_qr-data` à côté de l'exécutable ; un ancien
   dossier contenant une bibliothèque ou des profils reste utilisé.
 - Langue choisie depuis la fenêtre Langue commune (l'ancien choix est repris).
-- Textes : emoji décoratifs retirés des menus et des titres, tirets cadratins remplacés.
+- Textes et boutons : emoji décoratifs retirés des menus, titres et messages, tirets
+  cadratins remplacés ; les boutons à icône utilisent la police d'icônes de la charte.
+- Un dossier `rusty_qr-data` déjà présent à côté de l'exécutable l'emporte sur l'ancien
+  dossier.
+- Fenêtre centrée de 1180 x 560 pt (écran 1080p à 150 %).
 
 ### Supprimé
 - Anciennes fenêtres Langue et À propos, et leurs textes.
